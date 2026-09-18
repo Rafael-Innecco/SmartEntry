@@ -1,0 +1,4 @@
+-march=rv32imc_zicsr_zifencei
+-mtune=esp-base
+"-specs=/home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build/specs/picolibc.specs"
+-fno-rtti
