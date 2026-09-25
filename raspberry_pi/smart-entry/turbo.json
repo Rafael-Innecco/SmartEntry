@@ -5,7 +5,8 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**"]
+      "outputs": [".next/**", "!.next/cache/**"],
+      "env": ["SMART_ENTRY_DB_PATH", "SMART_ENTRY_ZIGBEE_PORT"]
     },
     "lint": {
       "dependsOn": ["^lint"]
