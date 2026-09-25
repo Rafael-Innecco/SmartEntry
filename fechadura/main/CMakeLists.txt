@@ -1,3 +1,3 @@
 idf_component_register(SRCS "smart_entry_main.c"
-                       PRIV_REQUIRES spi_flash
+                       PRIV_REQUIRES spi_flash esp_driver_gpio
                        INCLUDE_DIRS "")

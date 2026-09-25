@@ -1,4 +1,0 @@
-Command: cmake -G Ninja -B /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build -DPYTHON_DEPS_CHECKED=1 -DPYTHON=/home/rinnecco/.espressif/tools/python/v6.1/venv/bin/python -DESP_PLATFORM=1 -DCCACHE_ENABLE=False /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura
-NOTE: Kconfig parser version: 1
-NOTE: Kconfig defaults policy: use sdkconfig
-NOTE: Status: Finished successfully

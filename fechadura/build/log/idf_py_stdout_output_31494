@@ -1,8 +1,0 @@
-Command: ninja all
-[1/4] cd /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build && /home/rinnecco/.espressif/tools/python/v6.1/venv/bin/python /home/rinnecco/.espressif/v6.1/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 partition --type app /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build/partition_table/partition-table.bin /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build/smart_entry.bin
-smart_entry.bin binary size 0x1eee0 bytes. Smallest app partition is 0x100000 bytes. 0xe1120 bytes (88%) free.
-[2/4] Performing build step for 'bootloader'
-[1/1] cd /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build/bootloader && /home/rinnecco/.espressif/tools/python/v6.1/venv/bin/python /home/rinnecco/.espressif/v6.1/esp-idf/components/partition_table/check_sizes.py --offset 0x8000 bootloader 0x0 /home/rinnecco/poli/2026.3/lab_embarcados/SmartEntry/fechadura/build/bootloader/bootloader.bin
-Bootloader binary size 0x52a0 bytes. 0x2d60 bytes (35%) free.
-[3/4] No install step for 'bootloader'
-[4/4] Completed 'bootloader'
