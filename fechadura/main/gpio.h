@@ -12,4 +12,6 @@
 #define KBD_C3_PIN GPIO_NUM_1
 #define KBD_C4_PIN GPIO_NUM_0
 
+#define LOCK_CONTROL_PIN GPIO_NUM_8
+
 #endif
