@@ -1,44 +1,78 @@
-import type { LockStatus, NewUser, User } from "@workspace/shared"
+import { setTimeout as sleep } from "node:timers/promises"
 
+import type { AccessEvent, LockSlot, LockStatus } from "@workspace/shared"
+
+import { LockUnreachableError } from "./errors.js"
 import type { LockTransport } from "./lock-transport.js"
 
+export interface FakeLockBehavior {
+  /** Added to every round trip, to exercise timeouts. */
+  delayMs?: number
+  /** Every round trip fails with LockUnreachableError. */
+  unreachable?: boolean
+}
+
+export interface FakeLockTransport extends LockTransport {
+  configure(behavior: FakeLockBehavior): void
+  /** Simulates the lock reporting a keypad/RFID attempt. */
+  emitAccessEvent(event: AccessEvent): void
+}
+
 /**
- * In-memory stand-in for the real ZigBee link, so the HTTP API (and
- * apps/web on top of it) can be built and tested before ZigBee
- * communication with the lock is validated. Swap this out for a
- * zigbee-herdsman-backed LockTransport once that's ready.
+ * In-memory stand-in for the real ZigBee link, so the HTTP API and apps/web
+ * can be built and tested before ZigBee communication with the lock is
+ * validated. Swap for a zigbee-herdsman-backed LockTransport once ready.
  */
-export function createFakeLockTransport(): LockTransport {
-  const users = new Map<number, User>()
+export function createFakeLockTransport(
+  options: { initialSlots?: LockSlot[] } = {}
+): FakeLockTransport {
+  const slots = new Map(options.initialSlots?.map((slot) => [slot.id, slot] as const))
+  let behavior: FakeLockBehavior = {}
   let statusHandler: ((status: LockStatus) => void) | undefined
+  let accessHandler: ((event: AccessEvent) => void) | undefined
+
+  async function roundTrip(): Promise<void> {
+    if (behavior.delayMs) await sleep(behavior.delayMs)
+    if (behavior.unreachable) throw new LockUnreachableError()
+  }
 
   return {
-    async syncUsers() {
-      return [...users.values()]
+    isConnected: () => !behavior.unreachable,
+
+    async listSlots() {
+      await roundTrip()
+      return [...slots.values()].sort((a, b) => a.id - b.id)
     },
 
-    async registerUser(newUser: NewUser) {
-      const user: User = {
-        ...newUser,
-        hasTotp: true,
-        hasRfid: false,
-        createdAt: new Date().toISOString(),
-        syncedAt: null,
-      }
-      users.set(user.id, user)
-      return user
+    async setUser(slot) {
+      await roundTrip()
+      slots.set(slot, { id: slot, hasTotp: true, hasRfid: false })
     },
 
-    async removeUser(id: number) {
-      users.delete(id)
+    async clearUser(slot) {
+      await roundTrip()
+      slots.delete(slot)
     },
 
     async unlock() {
+      await roundTrip()
       statusHandler?.({ locked: false, updatedAt: new Date().toISOString() })
     },
 
     onStatusPush(handler) {
       statusHandler = handler
+    },
+
+    onAccessEvent(handler) {
+      accessHandler = handler
+    },
+
+    configure(next) {
+      behavior = next
+    },
+
+    emitAccessEvent(event) {
+      accessHandler?.(event)
     },
   }
 }

@@ -1,3 +1,5 @@
 export * from "./client.js"
 export * from "./users.js"
 export * from "./lock-status.js"
+export * from "./access-log.js"
+export * from "./link-state.js"

@@ -1,9 +1,22 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
 
-import { deleteUser, getLockStatus, listUsers, replaceAllUsers, upsertUser, type SmartEntryDb } from "@workspace/db"
-import { newUserSchema, removeUserRequestSchema } from "@workspace/shared"
+import {
+  ACCESS_LOG_MAX_ENTRIES,
+  getLockStatus,
+  listAccessLog,
+  listUsers,
+  type SmartEntryDb,
+} from "@workspace/db"
+import { newUserSchema, renameUserRequestSchema, slotIdSchema } from "@workspace/shared"
+import { z } from "zod"
 
+import { ConflictError, LockTimeoutError, LockUnreachableError, NotFoundError } from "./errors.js"
 import type { LockTransport } from "./lock-transport.js"
+import type { Services } from "./services.js"
+
+const accessLogQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(ACCESS_LOG_MAX_ENTRIES).default(50),
+})
 
 async function readJsonBody(req: IncomingMessage): Promise<unknown> {
   const chunks: Buffer[] = []
@@ -19,62 +32,78 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body))
 }
 
-/**
- * The internal HTTP API on 127.0.0.1:4000, per the architecture doc:
- * GET /status, GET+POST+DELETE /users, POST /unlock, POST /sync.
- * apps/web is the only intended caller.
- */
-export function createHttpServer(db: SmartEntryDb, lock: LockTransport): Server {
+function toErrorResponse(err: unknown): [number, object] {
+  if (err instanceof z.ZodError) return [400, { error: "invalid request", issues: err.issues }]
+  if (err instanceof SyntaxError) return [400, { error: "invalid JSON body" }]
+  if (err instanceof NotFoundError) return [404, { error: err.message }]
+  if (err instanceof ConflictError) return [409, { error: err.message }]
+  if (err instanceof LockUnreachableError) return [503, { error: err.message }]
+  if (err instanceof LockTimeoutError) return [504, { error: err.message }]
+  console.error(err)
+  return [500, { error: "internal error" }]
+}
+
+/** The internal HTTP API on 127.0.0.1:4000. Payload shapes live in @workspace/shared. */
+export function createHttpServer(db: SmartEntryDb, lock: LockTransport, services: Services): Server {
   return createServer((req, res) => {
-    handleRequest(db, lock, req, res).catch((err: unknown) => {
-      sendJson(res, 400, { error: err instanceof Error ? err.message : "bad request" })
+    route(db, lock, services, req, res).catch((err: unknown) => {
+      const [status, body] = toErrorResponse(err)
+      sendJson(res, status, body)
     })
   })
 }
 
-async function handleRequest(
+async function route(
   db: SmartEntryDb,
   lock: LockTransport,
+  services: Services,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
-  if (req.method === "GET" && req.url === "/status") {
-    sendJson(res, 200, getLockStatus(db))
-    return
+  const url = new URL(req.url ?? "/", "http://127.0.0.1")
+  const { pathname } = url
+  const method = req.method
+
+  if (method === "GET" && pathname === "/health") {
+    return sendJson(res, 200, { ok: true, lockConnected: lock.isConnected() })
   }
 
-  if (req.method === "GET" && req.url === "/users") {
-    sendJson(res, 200, { users: listUsers(db) })
-    return
+  if (method === "GET" && pathname === "/status") {
+    return sendJson(res, 200, getLockStatus(db))
   }
 
-  if (req.method === "POST" && req.url === "/users") {
+  if (method === "POST" && pathname === "/unlock") {
+    await services.unlock()
+    return sendJson(res, 200, { ok: true })
+  }
+
+  if (method === "GET" && pathname === "/users") {
+    return sendJson(res, 200, { users: listUsers(db) })
+  }
+
+  if (method === "POST" && pathname === "/users") {
     const newUser = newUserSchema.parse(await readJsonBody(req))
-    const user = await lock.registerUser(newUser)
-    upsertUser(db, user)
-    sendJson(res, 200, { user })
-    return
+    return sendJson(res, 200, await services.registerUser(newUser))
   }
 
-  if (req.method === "DELETE" && req.url === "/users") {
-    const { id } = removeUserRequestSchema.parse(await readJsonBody(req))
-    await lock.removeUser(id)
-    deleteUser(db, id)
-    sendJson(res, 200, { ok: true })
-    return
+  const userMatch = /^\/users\/(\d+)$/.exec(pathname)
+  if (userMatch && (method === "PATCH" || method === "DELETE")) {
+    const id = slotIdSchema.parse(Number(userMatch[1]))
+    if (method === "PATCH") {
+      const { name } = renameUserRequestSchema.parse(await readJsonBody(req))
+      return sendJson(res, 200, { user: services.renameUser(id, name) })
+    }
+    await services.removeUser(id)
+    return sendJson(res, 200, { ok: true })
   }
 
-  if (req.method === "POST" && req.url === "/unlock") {
-    await lock.unlock()
-    sendJson(res, 200, { ok: true })
-    return
+  if (method === "POST" && pathname === "/sync") {
+    return sendJson(res, 200, await services.sync())
   }
 
-  if (req.method === "POST" && req.url === "/sync") {
-    const users = await lock.syncUsers()
-    replaceAllUsers(db, users)
-    sendJson(res, 200, { users, syncedAt: new Date().toISOString() })
-    return
+  if (method === "GET" && pathname === "/access-log") {
+    const { limit } = accessLogQuerySchema.parse(Object.fromEntries(url.searchParams))
+    return sendJson(res, 200, { entries: listAccessLog(db, limit) })
   }
 
   sendJson(res, 404, { error: "not found" })

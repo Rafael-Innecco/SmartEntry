@@ -11,11 +11,13 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "lint": "eslint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@workspace/db": "workspace:*",
-    "@workspace/shared": "workspace:*"
+    "@workspace/shared": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.43",

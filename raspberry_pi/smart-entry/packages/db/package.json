@@ -9,7 +9,8 @@
   "scripts": {
     "lint": "eslint",
     "format": "prettier --write \"**/*.ts\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "@workspace/shared": "workspace:*",
@@ -21,6 +22,7 @@
     "@workspace/eslint-config": "workspace:*",
     "@workspace/typescript-config": "workspace:*",
     "eslint": "^9",
+    "tsx": "^4.23.13",
     "typescript": "^5"
   }
 }
