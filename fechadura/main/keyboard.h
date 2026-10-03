@@ -6,7 +6,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-
 void initialize_kbd_gpios(void);
 char check_kbd();
 

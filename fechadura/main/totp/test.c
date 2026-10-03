@@ -1,25 +1,19 @@
-#include <stdio.h>
+#include "hmac.h"
 #include <stdint.h>
+#include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
-#include "hmac.h"
 
 #define KEYLEN 32
 
-uint8_t key[32] = { 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
-    123, 42, 69, 67, 
+uint8_t key[32] = {
+    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
+    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
 };
 
 typedef struct totp {
-    void* key;       // secret key
+    void *key;       // secret key
     size_t keylen;   // key size
     uint64_t t0;     // start epoch
     uint8_t tx;      // one-time duration
@@ -31,16 +25,17 @@ typedef struct totp {
 /// https://en.wikipedia.org/wiki/HMAC-based_one-time_password#Algorithm
 /// https://en.wikipedia.org/wiki/Time-based_one-time_password#Algorithm
 ///////////////////////////////////////////////////////////////////////////////
-uint32_t truncate_mac(const void* mac, const size_t maclen) {
-    const uint8_t* macbytes = (uint8_t*) mac;
-    uint8_t index = macbytes[maclen-1] & 0xF;
-    return ((uint32_t) (macbytes[index] & 0x7F) << 24)
-         | ((uint32_t) macbytes[index+1] << 16)
-         | ((uint32_t) macbytes[index+2] << 8)
-         | ((uint32_t) macbytes[index+3]);
+uint32_t truncate_mac(const void *mac, const size_t maclen) {
+    const uint8_t *macbytes = (uint8_t *)mac;
+    uint8_t index = macbytes[maclen - 1] & 0xF;
+    return ((uint32_t)(macbytes[index] & 0x7F) << 24) |
+           ((uint32_t)macbytes[index + 1] << 16) |
+           ((uint32_t)macbytes[index + 2] << 8) |
+           ((uint32_t)macbytes[index + 3]);
 }
 
-void compute_hotp(const void* key, const size_t keylen, uint64_t counter, uint8_t codelen, uint8_t* output) {
+void compute_hotp(const void *key, const size_t keylen, uint64_t counter,
+                  uint8_t codelen, uint8_t *output) {
     // counter as 8-byte big-endian message
     uint8_t msg[8];
     for (int i = 7; i >= 0; i--) {
@@ -59,7 +54,7 @@ void compute_hotp(const void* key, const size_t keylen, uint64_t counter, uint8_
     }
 }
 
-void compute_totp(const totp* config, uint64_t current_time, uint8_t* output) {
+void compute_totp(const totp *config, uint64_t current_time, uint8_t *output) {
     uint64_t counter = (current_time - config->t0) / config->tx;
     compute_hotp(config->key, config->keylen, counter, config->codelen, output);
 }
@@ -67,13 +62,14 @@ void compute_totp(const totp* config, uint64_t current_time, uint8_t* output) {
 ///////////////////////////////////////////////////////////////////////////////
 /// URI generation
 ///////////////////////////////////////////////////////////////////////////////
-void print_digits(const uint8_t* digits, const size_t len) {
+void print_digits(const uint8_t *digits, const size_t len) {
     for (size_t i = 0; i < len; i++) {
         printf("%u", digits[i]);
     }
 }
 
-size_t base32_encode(const uint8_t* data, const size_t len, char* out, const size_t outlen) {
+size_t base32_encode(const uint8_t *data, const size_t len, char *out,
+                     const size_t outlen) {
     static const char alphabet[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
     size_t needed = (len * 8 + 4) / 5;
     if (outlen < needed + 1) {
@@ -98,22 +94,25 @@ size_t base32_encode(const uint8_t* data, const size_t len, char* out, const siz
     return pos;
 }
 
-size_t build_otpauth_url(const totp* config, const char* issuer, const char* account, char* out, const size_t outlen) {
+size_t build_otpauth_url(const totp *config, const char *issuer,
+                         const char *account, char *out, const size_t outlen) {
     char secret[128];
-    if (base32_encode(config->key, config->keylen, secret, sizeof(secret)) == 0) {
+    if (base32_encode(config->key, config->keylen, secret, sizeof(secret)) ==
+        0) {
         return 0;
     }
 
-    int n = snprintf(out, outlen,
-        "otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%u&period=%u",
-        issuer, account, secret, issuer, config->codelen, config->tx);
-    if (n < 0 || (size_t) n >= outlen) {
+    int n =
+        snprintf(out, outlen,
+                 "otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%u&period=%u",
+                 issuer, account, secret, issuer, config->codelen, config->tx);
+    if (n < 0 || (size_t)n >= outlen) {
         return 0;
     }
     return n;
 }
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
     const totp mytotp = {
         .key = key,
         .keylen = KEYLEN,
@@ -132,7 +131,8 @@ int main(int argc, char** argv) {
     while (1) {
         uint64_t now = time(NULL);
         compute_totp(&mytotp, now, code);
-        printf("step %llu: ", (unsigned long long) ((now - mytotp.t0) / mytotp.tx));
+        printf("step %llu: ",
+               (unsigned long long)((now - mytotp.t0) / mytotp.tx));
         print_digits(code, mytotp.codelen);
         printf("\n");
         fflush(stdout);

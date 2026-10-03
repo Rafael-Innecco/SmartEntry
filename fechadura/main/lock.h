@@ -6,6 +6,4 @@ void initLock(void);
 void openDoor(void);
 void vlockTask(void *pvParameters);
 
-
 #endif
-

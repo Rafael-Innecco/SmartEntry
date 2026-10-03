@@ -1,8 +1,8 @@
 #include "keyboard.h"
-#include "gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
+#include "gpio.h"
 #include "portmacro.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,57 +19,57 @@ const char KBD_ARR[] = {'1', '4', '7', '*', '2', '5', '8', '0',
 QueueHandle_t xKeyboardQueue;
 
 void initialize_kbd_gpios(void) {
-  for (int r = 0; r < KBD_ROWS; r++) {
-    gpio_set_direction(ROW_PINS[r], GPIO_MODE_INPUT);
-    gpio_set_pull_mode(ROW_PINS[r], GPIO_PULLUP_ONLY);
-  }
-  for (int c = 0; c < KBD_COLS; c++) {
-    gpio_set_direction(COL_PINS[c], GPIO_MODE_OUTPUT);
-    gpio_set_level(COL_PINS[c], 1); // idle high
-  }
+    for (int r = 0; r < KBD_ROWS; r++) {
+        gpio_set_direction(ROW_PINS[r], GPIO_MODE_INPUT);
+        gpio_set_pull_mode(ROW_PINS[r], GPIO_PULLUP_ONLY);
+    }
+    for (int c = 0; c < KBD_COLS; c++) {
+        gpio_set_direction(COL_PINS[c], GPIO_MODE_OUTPUT);
+        gpio_set_level(COL_PINS[c], 1); // idle high
+    }
 }
 
 char check_kbd() {
-  for (int i = 0; i < KBD_COLS; i++) {
-    gpio_set_level(COL_PINS[i], 0);
-    for (int j = 0; j < KBD_ROWS; j++) {
-      if (gpio_get_level(ROW_PINS[j]) != 0) {
-        continue;
-      }
+    for (int i = 0; i < KBD_COLS; i++) {
+        gpio_set_level(COL_PINS[i], 0);
+        for (int j = 0; j < KBD_ROWS; j++) {
+            if (gpio_get_level(ROW_PINS[j]) != 0) {
+                continue;
+            }
 
-      if (gpio_get_level(ROW_PINS[j]) == 0) {
-        while (gpio_get_level(ROW_PINS[j]) == 0) {
+            if (gpio_get_level(ROW_PINS[j]) == 0) {
+                while (gpio_get_level(ROW_PINS[j]) == 0) {
+                }
+                return KBD_ARR[i * KBD_COLS + j];
+            }
         }
-        return KBD_ARR[i * KBD_COLS + j];
-      }
+        gpio_set_level(COL_PINS[i], 1);
     }
-    gpio_set_level(COL_PINS[i], 1);
-  }
-  return '\0';
+    return '\0';
 }
 
 void writeToQueue(char value) {
-  BaseType_t xStatus;
+    BaseType_t xStatus;
 
-  xStatus = xQueueSendToBack(xKeyboardQueue, &value, 0);
+    xStatus = xQueueSendToBack(xKeyboardQueue, &value, 0);
 }
 
 void vKeyboardTask(void *pvParameters) {
-  printf("\033[32mStarting keyboard task\033[0m\n");
-  fflush(stdout);
-  initialize_kbd_gpios();
+    printf("\033[32mStarting keyboard task\033[0m\n");
+    fflush(stdout);
+    initialize_kbd_gpios();
 
-  int ret = '\0';
-  for (;;) {
-    ret = check_kbd();
-    if (ret != '\0') {
-      writeToQueue(ret);
-      fflush(stdout);
+    int ret = '\0';
+    for (;;) {
+        ret = check_kbd();
+        if (ret != '\0') {
+            writeToQueue(ret);
+            fflush(stdout);
+        }
+
+        vTaskDelay(200 / portTICK_PERIOD_MS);
     }
 
-    vTaskDelay(200 / portTICK_PERIOD_MS);
-  }
-
-  // Should never run, insurance against the task exiting
-  vTaskDelete(NULL);
+    // Should never run, insurance against the task exiting
+    vTaskDelete(NULL);
 }

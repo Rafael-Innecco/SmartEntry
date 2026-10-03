@@ -1,7 +1,7 @@
-#include "gpio.h"
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "gpio.h"
 
 SemaphoreHandle_t lock_mutex;
 
@@ -12,10 +12,7 @@ void initLock(void) {
     gpio_set_level(GPIO_NUM_8, 0);
 }
 
-void openDoor()
-{
-    xSemaphoreGive(lock_mutex);
-}
+void openDoor() { xSemaphoreGive(lock_mutex); }
 
 void vlockTask(void *pvParameters) {
     for (;;) {

@@ -18,66 +18,64 @@
 
 #include "keyboard.h"
 
-
 void readKeyboardQueue() {
-  char lKeyboardReceived;
-  BaseType_t xKeyboardQueueStatus;
-  const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
+    char lKeyboardReceived;
+    BaseType_t xKeyboardQueueStatus;
+    const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
 
-  xKeyboardQueueStatus = xQueueReceive(xKeyboardQueue, &lKeyboardReceived, xTicksToWait);
+    xKeyboardQueueStatus =
+        xQueueReceive(xKeyboardQueue, &lKeyboardReceived, xTicksToWait);
 
-  if (xKeyboardQueueStatus == pdPASS) {
-      printf("Queue Read: %c\n", lKeyboardReceived);
-  } else {
-      printf("Empty Queue\n");
-  }
+    if (xKeyboardQueueStatus == pdPASS) {
+        printf("Queue Read: %c\n", lKeyboardReceived);
+    } else {
+        printf("Empty Queue\n");
+    }
 }
 
 void app_main(void) {
+    printf("Hello world - GPIOD!\n");
 
-  printf("Hello world - GPIOD!\n");
+    /* Print chip information */
+    esp_chip_info_t chip_info;
+    uint32_t flash_size;
+    esp_chip_info(&chip_info);
+    printf("This is %s chip with %d CPU core(s), %s%s%s%s, ", CONFIG_IDF_TARGET,
+           chip_info.cores,
+           (chip_info.features & CHIP_FEATURE_WIFI_BGN) ? "WiFi/" : "",
+           (chip_info.features & CHIP_FEATURE_BT) ? "BT" : "",
+           (chip_info.features & CHIP_FEATURE_BLE) ? "BLE" : "",
+           (chip_info.features & CHIP_FEATURE_IEEE802154)
+               ? ", 802.15.4 (Zigbee/Thread)"
+               : "");
 
-  /* Print chip information */
-  esp_chip_info_t chip_info;
-  uint32_t flash_size;
-  esp_chip_info(&chip_info);
-  printf("This is %s chip with %d CPU core(s), %s%s%s%s, ", CONFIG_IDF_TARGET,
-         chip_info.cores,
-         (chip_info.features & CHIP_FEATURE_WIFI_BGN) ? "WiFi/" : "",
-         (chip_info.features & CHIP_FEATURE_BT) ? "BT" : "",
-         (chip_info.features & CHIP_FEATURE_BLE) ? "BLE" : "",
-         (chip_info.features & CHIP_FEATURE_IEEE802154)
-             ? ", 802.15.4 (Zigbee/Thread)"
-             : "");
+    unsigned major_rev = chip_info.revision / 100;
+    unsigned minor_rev = chip_info.revision % 100;
+    printf("silicon revision v%d.%d, ", major_rev, minor_rev);
+    if (esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
+        printf("Get flash size failed");
+        return;
+    }
 
-  unsigned major_rev = chip_info.revision / 100;
-  unsigned minor_rev = chip_info.revision % 100;
-  printf("silicon revision v%d.%d, ", major_rev, minor_rev);
-  if (esp_flash_get_size(NULL, &flash_size) != ESP_OK) {
-    printf("Get flash size failed");
-    return;
-  }
+    printf("%" PRIu32 "MB %s flash\n", flash_size / (uint32_t)(1024 * 1024),
+           (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded"
+                                                         : "external");
 
-  printf("%" PRIu32 "MB %s flash\n", flash_size / (uint32_t)(1024 * 1024),
-         (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded"
-                                                       : "external");
+    printf("Minimum free heap size: %" PRIu32 " bytes\n",
+           esp_get_minimum_free_heap_size());
 
-  printf("Minimum free heap size: %" PRIu32 " bytes\n",
-         esp_get_minimum_free_heap_size());
+    xKeyboardQueue = xQueueCreate(10, sizeof(char));
 
-  xKeyboardQueue = xQueueCreate(10, sizeof(char));
+    TaskHandle_t xKeyboardHandle = NULL;
+    BaseType_t xKeyboardReturned;
+    xKeyboardReturned = xTaskCreate(vKeyboardTask, "KEYBOARD", 500,
+                                    (void *)NULL, 2, &xKeyboardHandle);
 
-  TaskHandle_t xKeyboardHandle = NULL;
-  BaseType_t xKeyboardReturned;
-  xKeyboardReturned = xTaskCreate(vKeyboardTask, "KEYBOARD", 500, (void *)NULL,
-                                  2, &xKeyboardHandle);
-
-
-  for (;;) {
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    readKeyboardQueue();
-  }
-  printf("Restarting now.\n");
-  fflush(stdout);
-  esp_restart();
+    for (;;) {
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        readKeyboardQueue();
+    }
+    printf("Restarting now.\n");
+    fflush(stdout);
+    esp_restart();
 }

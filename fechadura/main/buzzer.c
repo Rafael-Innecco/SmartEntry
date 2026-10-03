@@ -1,7 +1,7 @@
-#include "freertos/FreeRTOS.h"
 #include "driver/gpio.h"
-#include "freertos/task.h"
 #include "driver/ledc_etm.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 #include "buzzer.h"
 
