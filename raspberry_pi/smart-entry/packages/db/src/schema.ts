@@ -1,4 +1,4 @@
-export const SCHEMA_SQL = `
+const BASE_SCHEMA = `
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY CHECK (id BETWEEN 0 AND 9),
   name TEXT NOT NULL,
@@ -27,3 +27,13 @@ CREATE TABLE IF NOT EXISTS link_state (
   hmac_counter INTEGER NOT NULL
 );
 `
+
+/**
+ * Applied in order; PRAGMA user_version records how many have run. Append
+ * only — never edit an entry that may already have run on a device, since
+ * the Pi's database holds state (the HMAC counter) that can't be recreated.
+ */
+export const MIGRATIONS: readonly string[] = [
+  BASE_SCHEMA,
+  "ALTER TABLE access_log ADD COLUMN user_name TEXT",
+]

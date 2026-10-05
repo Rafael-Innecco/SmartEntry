@@ -2,9 +2,11 @@ import assert from "node:assert/strict"
 import { beforeEach, describe, test } from "node:test"
 
 import type { User } from "@workspace/shared"
+import Database from "better-sqlite3"
 
 import { ACCESS_LOG_MAX_ENTRIES, addAccessEvent, listAccessLog } from "./access-log.js"
-import { createDb, type SmartEntryDb } from "./client.js"
+import { createDb, migrate, type SmartEntryDb } from "./client.js"
+import { MIGRATIONS } from "./schema.js"
 import { nextHmacCounter } from "./link-state.js"
 import { getLockStatus, setLockStatus } from "./lock-status.js"
 import {
@@ -114,6 +116,19 @@ describe("access log", () => {
     )
   })
 
+  test("keeps the name the slot had when the event happened", () => {
+    upsertUser(db, user(0, "Alice"))
+    addAccessEvent(db, { slot: 0, method: "totp", result: "success" }, T0)
+    updateUserName(db, 0, "Bruna")
+    addAccessEvent(db, { slot: 0, method: "totp", result: "success" }, T1)
+    addAccessEvent(db, { slot: 7, method: "totp", result: "failure" }, T1)
+    addAccessEvent(db, { slot: null, method: "remote", result: "success" }, T1)
+    assert.deepEqual(
+      listAccessLog(db, 10).map((entry) => entry.userName),
+      [null, null, "Bruna", "Alice"]
+    )
+  })
+
   test(`keeps only the newest ${ACCESS_LOG_MAX_ENTRIES} entries`, () => {
     for (let i = 0; i < ACCESS_LOG_MAX_ENTRIES + 10; i++) {
       addAccessEvent(db, { slot: i % 10, method: "totp", result: "success" }, T0)
@@ -121,6 +136,31 @@ describe("access log", () => {
     const entries = listAccessLog(db, ACCESS_LOG_MAX_ENTRIES + 10)
     assert.equal(entries.length, ACCESS_LOG_MAX_ENTRIES)
     assert.equal(entries.at(-1)?.id, 11)
+  })
+})
+
+describe("migrations", () => {
+  test("upgrade a database created before access_log had user_name", () => {
+    const legacy = new Database(":memory:")
+    legacy.exec(`
+      CREATE TABLE access_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, slot INTEGER,
+        method TEXT NOT NULL, result TEXT NOT NULL, received_at TEXT NOT NULL
+      );
+      INSERT INTO access_log (slot, method, result, received_at) VALUES (1, 'totp', 'success', '${T0}');
+    `)
+    migrate(legacy)
+    assert.equal(legacy.pragma("user_version", { simple: true }), MIGRATIONS.length)
+    assert.deepEqual(
+      listAccessLog(legacy, 10).map(({ slot, userName }) => ({ slot, userName })),
+      [{ slot: 1, userName: null }]
+    )
+  })
+
+  test("are a no-op on an up-to-date database", () => {
+    upsertUser(db, user(0, "Alice"))
+    migrate(db)
+    assert.equal(listUsers(db).length, 1)
   })
 })
 

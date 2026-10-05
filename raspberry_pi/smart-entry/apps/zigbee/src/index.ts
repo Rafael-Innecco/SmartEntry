@@ -11,6 +11,10 @@ const db = createDb(dbPath)
 // A real lock keeps its slots in flash across restarts. Seeding the fake from
 // the replica mimics that, so the startup sync doesn't wipe users in dev.
 const lock = createFakeLockTransport({ initialSlots: listUsers(db) })
+lock.configure({
+  delayMs: Number(process.env.SMART_ENTRY_FAKE_DELAY_MS ?? 0),
+  unreachable: process.env.SMART_ENTRY_FAKE_UNREACHABLE === "1",
+})
 
 const { server, services } = createApp({ db, lock })
 
