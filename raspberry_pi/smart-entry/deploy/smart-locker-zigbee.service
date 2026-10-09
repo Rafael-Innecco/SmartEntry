@@ -1,0 +1,27 @@
+[Unit]
+Description=SmartEntry lock bridge
+After=network.target
+
+[Service]
+Type=simple
+User=smart-entry
+Group=smart-entry
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/smart-entry/apps/zigbee
+Environment=NODE_ENV=production
+EnvironmentFile=/etc/smart-entry/zigbee.env
+ExecStart=/usr/bin/node --import tsx src/index.ts
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+StateDirectory=smart-entry
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/smart-entry
+
+[Install]
+WantedBy=multi-user.target

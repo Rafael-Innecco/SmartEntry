@@ -12,7 +12,9 @@ export type RegisterResult =
 const MESSAGES: Record<ZigbeeError, string> = {
   "lock-unreachable": "A fechadura não respondeu. Confira se ela está ligada e perto do Raspberry Pi.",
   "lock-timeout":
-    "A fechadura demorou para responder. Tente de novo. Se o comando chegou atrasado, a próxima sincronização corrige.",
+    "A confirmação demorou. Aguarde e sincronize antes de alterar usuários. Se o cadastro aparecer sem QR, remova o usuário e cadastre novamente.",
+  "lock-busy": "Há um comando em andamento. Aguarde a confirmação antes de continuar.",
+  "sync-required": "Sincronize os usuários antes de continuar. Se um cadastro aparecer sem QR, remova e cadastre novamente.",
   "slot-in-use": "Esse slot já está em uso. Escolha outro.",
   "not-found": "Esse usuário não existe mais. Atualize a página.",
   invalid: "Os dados enviados não são válidos.",

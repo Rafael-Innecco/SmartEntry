@@ -4,7 +4,7 @@ PCS3848 · Sistemas Embarcados · Poli-USP
 
 Este plano cobre o lado Raspberry Pi da fechadura SmartEntry: a interface web, a ponte ZigBee e a réplica local de usuários (`raspberry_pi/smart-entry`). A fechadura (ESP32-H2, pasta `fechadura/`) é desenvolvida por outro time e aparece aqui como a interface que precisamos combinar.
 
-Atualizado em 9 de outubro de 2026. Uma versão visual desta página está em [`plano-desenvolvimento.html`](plano-desenvolvimento.html) (baixe e abra no navegador).
+Atualizado em 9 de outubro de 2026. A instalação e as evidências de validação estão em [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md).
 
 ## Situação
 
@@ -13,13 +13,21 @@ Atualizado em 9 de outubro de 2026. Uma versão visual desta página está em [`
 | 0 | Ajustes na base | Concluída |
 | 1 | Testes automatizados | Concluída |
 | 2 | Interface web (`apps/web`) | Implementada, falta validar no navegador |
-| 3 | Deploy no Raspberry Pi | Planejada |
+| 3 | Deploy no Raspberry Pi | Instalado e validado com simulador; atualização e queda de energia pendentes |
 | 4 | ZigBee real | Aguarda o firmware |
-| 5 | Revisão de segurança | Planejada |
+| 5 | Revisão de segurança | HTTPS, cookies e loopback verificados; ZigBee pendente |
 | 6 | Integração e validação | Planejada |
 | 7 | RFID | Opcional |
 
-45 testes automatizados passando (12 em `apps/web`, 13 em `packages/db`, 20 em `apps/zigbee`). As 10 decisões de projeto estão fechadas.
+50 testes automatizados passando (14 em `apps/web`, 13 em `packages/db`, 23 em `apps/zigbee`). As 10 decisões estão documentadas; as propostas marcadas como firmware ainda precisam de confirmação do outro time.
+
+### Próximos passos imediatos
+
+1. Validar a interface no navegador e no celular (Fase 2), incluindo avisos de erro, QR e largura pequena.
+2. Validar atualização e recuperação após queda de energia conforme [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md). Instalação com simulador, HTTPS, portas e reboot já verificados no Pi (Fase 3).
+3. Confirmar o protocolo com o time do firmware e obter o dongle/firmware mínimo para o spike (Fase 4). O firmware deste checkout ainda usa senha fixa `1234` no fluxo principal.
+
+Já implementados: bloqueio de operações concorrentes, recuperação por sync após timeout de cadastro/remoção, tratamento de respostas inválidas da API, execução de produção com `tsx`, unidades systemd, Caddyfile e modelos de ambiente em `deploy/`. O deploy com simulador foi validado no Pi 3B+ (Debian 13 arm64) em 9 de outubro de 2026, incluindo login HTTPS e reboot. Build no Pi usa `build:pi` com Webpack e `SMART_ENTRY_LOW_MEMORY_BUILD=1`; Turbopack excedeu a memória disponível. Integração real, atualização e resistência a quedas de energia continuam pendentes.
 
 ## Arquitetura
 
@@ -90,6 +98,7 @@ Pronto quando `pnpm run test` passa.
 - [x] `packages/db`: merge, transação, limite do log, contador, migrações
 - [x] `apps/zigbee`: todas as rotas, erros 400 a 504, TOTP
 - [x] Task `test` no Turborepo
+- [x] Regressões: operações concorrentes, cadastro/remoção confirmados após timeout e resposta inválida da API
 
 ### Fase 2 · Interface web · Falta validar no navegador
 
@@ -104,20 +113,25 @@ Pronto quando o fluxo completo funciona no navegador contra o stub.
 - [x] Avisos para fechadura desconectada e serviço fora do ar
 - [x] Migrações do banco por `PRAGMA user_version`
 - [ ] Validar no navegador: cadastro com QR no celular, destravar, renomear, remover, largura de celular
+- [ ] Validar avisos com serviço parado, fechadura inacessível e confirmação atrasada; recuperar cadastro sem QR removendo e cadastrando novamente
 
 Login, logout, proteção das páginas e avisos de erro já foram testados por HTTP.
 
-### Fase 3 · Deploy no Raspberry Pi · Planejada
+### Fase 3 · Deploy no Raspberry Pi · Instalado com simulador
 
 Pronto quando o painel abre via HTTPS no Pi e volta sozinho depois de um reinício.
 
-- [ ] Node 22.13+ arm64 (exigido pelo `iron-session` 9), pnpm, `build-essential` e `python3`
-- [ ] Definir como o `apps/zigbee` roda em produção (hoje o `build` com `tsc` não serve)
-- [ ] `/var/lib/smart-entry` para dados e `/etc/smart-entry` para segredos (permissão 600)
-- [ ] Serviços `smart-locker-web` e `smart-locker-zigbee` com `Restart=always`
-- [ ] Caddy com `tls internal` na frente do Next
-- [ ] Usuário do serviço no grupo `dialout`
-- [ ] Roteiro de atualização e teste de tirar o Pi da tomada
+- [x] Node 22.23.3 arm64, npm 10.9.9, pnpm 12.4.2, `build-essential` e `python3`
+- [x] Execução de produção do `apps/zigbee`: `tsx src/index.ts`; `build` valida tipos com `tsc --noEmit`
+- [x] Modelos systemd, Caddy e ambientes em `deploy/`; web de produção vinculada a `127.0.0.1`
+- [x] Roteiro de instalação, atualização, backup e recuperação em [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md)
+- [x] `/var/lib/smart-entry` para dados e `/etc/smart-entry` para segredos (permissão 600)
+- [x] Serviços `smart-locker-web` e `smart-locker-zigbee` com `Restart=always`
+- [x] Caddy com `tls internal` na frente do Next; login validado por HTTPS
+- [x] Usuário do serviço no grupo `dialout`
+- [x] Build, 50 testes, typecheck e lint no Pi; build com Webpack e um worker
+- [x] Reboot real: web, ponte e Caddy retornaram automaticamente
+- [ ] Executar atualização e teste de tirar o Pi da tomada; registrar evidências
 
 ### Fase 4 · ZigBee real · Aguarda o firmware
 
@@ -128,16 +142,17 @@ Pronto quando todas as rotas funcionam com a fechadura real. Depende do dongle e
 - [ ] `ZigbeeLockTransport` com a mesma interface do stub
 - [ ] HMAC com o contador persistido em `link_state`
 - [ ] Time-guard: hora só com NTP sincronizado; checar se o herdsman responde pedidos de hora sozinho
-- [ ] Timeouts ajustados ao poll; transporte escolhido por `SMART_ENTRY_TRANSPORT`
+- [ ] Timeouts ajustados ao poll; implementar a opção real de `SMART_ENTRY_TRANSPORT` (hoje só `fake` é aceito; outros valores encerram o processo)
+- [ ] Garantir que comandos não executem após o encerramento definitivo da promessa; limitar comandos pendentes e validar recuperação após reiniciar a ponte
 
-### Fase 5 · Revisão de segurança · Planejada
+### Fase 5 · Revisão de segurança · Parcial
 
 Depende das Fases 3 e 4.
 
-- [ ] HTTPS ativo; cookies `HttpOnly`, `Secure` e `SameSite`
+- [x] HTTPS ativo; cookies `HttpOnly`, `Secure` e `SameSite=Strict`, conferidos após login
 - [ ] Pareamento fechado; chaves com permissão 600
 - [ ] Teste de replay: comando reenviado é rejeitado
-- [ ] Apps só em `127.0.0.1`, conferido com `ss -tlnp`
+- [x] Apps só em `127.0.0.1`, conferido com `ss -tlnp`
 
 ### Fase 6 · Integração e validação · Planejada
 
@@ -183,15 +198,17 @@ Escuta em `127.0.0.1:4000` e só a web chama. Toda escrita vai primeiro à fecha
 |---|---|---|
 | `GET /health` | Processo vivo e conexão com a fechadura | — |
 | `GET /status` | Estado da porta | — |
-| `POST /unlock` | Destrava, espera a confirmação e registra no log | 503, 504 |
+| `POST /unlock` | Destrava, espera a confirmação e registra no log | 409, 503, 504 |
 | `GET /users` | Lista da réplica | — |
 | `POST /users` | Cadastra `{id, name}` e devolve o `totpUri` uma vez | 400, 409, 503, 504 |
-| `PATCH /users/:id` | Renomeia, só no Pi | 400, 404 |
-| `DELETE /users/:id` | Remove da fechadura e depois da réplica | 400, 404, 503, 504 |
-| `POST /sync` | Sincronização completa com merge por slot | 503, 504 |
+| `PATCH /users/:id` | Renomeia, só no Pi | 400, 404, 409 |
+| `DELETE /users/:id` | Remove da fechadura e depois da réplica | 400, 404, 409, 503, 504 |
+| `POST /sync` | Sincronização completa com merge por slot | 409, 503, 504 |
 | `GET /access-log?limit=` | Últimos acessos, do mais novo ao mais antigo | 400 |
 
-Códigos: 400 entrada inválida · 404 usuário ou rota inexistente · 409 slot ocupado · 503 fechadura inacessível · 504 fechadura não respondeu a tempo.
+Códigos: 400 entrada inválida · 404 usuário ou rota inexistente · 409 conflito (slot ocupado, operação pendente ou sync necessário) · 503 fechadura inacessível · 504 fechadura não respondeu a tempo.
+
+Operações na fechadura são exclusivas: enquanto uma confirmação estiver pendente, outro comando, sync ou renomeação recebe 409 com `code: lock-busy`. As leituras continuam disponíveis. Um timeout de cadastro/remoção exige sync antes de novas alterações (`code: sync-required`); o bloqueio permanece até a operação original terminar. Sync recupera um cadastro tardio sem QR: remova esse slot e cadastre novamente. Destravamento continua permitido após o comando pendente terminar, mesmo com sync de usuários necessário. A proteção atual é por processo; recuperação após reinício e garantias de entrega precisarão de validação no transporte real.
 
 ## Modelo de dados
 
@@ -236,9 +253,9 @@ Proposta para validar com o time do firmware. O HMAC é SHA-256 truncado em 16 b
 | Destravamento lento por causa do sono da fechadura | Médio | Poll de até 5 s, timeout de 15 s e mensagem de espera na tela |
 | Herdsman responder pedidos de hora sozinho | Médio | Verificar no spike; plano B é enviar a hora pelo `0xFC00` |
 | Banco do Pi perdido zera o contador do HMAC | Médio | Combinar com o firmware um re-pareamento ou ressincronização do contador |
-| `apps/zigbee` sem forma definida de rodar em produção | Médio | Decidir na Fase 3 entre rodar com `tsx` ou empacotar o código |
+| Execução de produção ainda não validada em arm64 | Médio | `tsx` definido como runtime; instalar dependências e validar serviços no Pi na Fase 3 |
 | `better-sqlite3` não compilar no Pi | Baixo | `build-essential` e `python3`; testar logo na Fase 3 |
-| Cartão SD corromper em queda de energia | Baixo | A réplica é descartável e o sync reconstrói os dados |
+| Cartão SD corromper em queda de energia | Médio | Backup consistente; sync recupera slots, mas não nomes, histórico ou contador HMAC. Perda/regressão do contador exige recuperação acordada com o firmware |
 | `iron-session` 9 exige Node 22.13+ | Baixo | Instalar Node 22 LTS no Pi na Fase 3 |
 
 ## Como rodar em desenvolvimento

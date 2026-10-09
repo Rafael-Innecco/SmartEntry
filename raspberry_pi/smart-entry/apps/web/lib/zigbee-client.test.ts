@@ -7,7 +7,7 @@ import { createZigbeeClient } from "./zigbee-client"
 
 let server: Server
 let baseUrl: string
-let reply: { status: number; body: unknown; hang?: boolean } = { status: 200, body: {} }
+let reply: { status: number; body: unknown; hang?: boolean; raw?: string } = { status: 200, body: {} }
 let lastRequest: { method?: string; url?: string; body: string } = { body: "" }
 
 before(async () => {
@@ -17,7 +17,7 @@ before(async () => {
     lastRequest = { method: req.method, url: req.url, body }
     if (reply.hang) return
     res.writeHead(reply.status, { "content-type": "application/json" })
-    res.end(JSON.stringify(reply.body))
+    res.end(reply.raw ?? JSON.stringify(reply.body))
   })
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`
@@ -72,4 +72,21 @@ test("reports service-down when apps/zigbee is not listening", async () => {
 test("reports service-down when apps/zigbee hangs past the timeout", async () => {
   reply = { status: 200, body: {}, hang: true }
   assert.deepEqual(await createZigbeeClient(baseUrl, 50).status(), { ok: false, error: "service-down" })
+})
+
+test("invalid JSON and unexpected payloads become internal errors", async () => {
+  for (const response of [
+    { status: 200, body: {}, raw: "{broken" },
+    { status: 200, body: { locked: "yes" } },
+  ]) {
+    reply = response
+    assert.deepEqual(await createZigbeeClient(baseUrl).status(), { ok: false, error: "internal" })
+  }
+})
+
+test("distinguishes occupied slots, pending operations and required sync", async () => {
+  for (const code of ["lock-busy", "sync-required"] as const) {
+    reply = { status: 409, body: { error: "conflict", code } }
+    assert.deepEqual(await createZigbeeClient(baseUrl).sync(), { ok: false, error: code })
+  }
 })

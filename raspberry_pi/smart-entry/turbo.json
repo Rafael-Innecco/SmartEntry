@@ -11,6 +11,8 @@
         "SMART_ENTRY_ZIGBEE_PORT",
         "SMART_ENTRY_FAKE_DELAY_MS",
         "SMART_ENTRY_FAKE_UNREACHABLE",
+        "SMART_ENTRY_TRANSPORT",
+        "SMART_ENTRY_LOW_MEMORY_BUILD",
         "SMART_ENTRY_ZIGBEE_URL",
         "ADMIN_PASSWORD_HASH",
         "SESSION_SECRET",
@@ -19,6 +21,10 @@
     },
     "lint": {
       "dependsOn": ["^lint"]
+    },
+    "zigbee#build": {
+      "dependsOn": ["^build"],
+      "outputs": []
     },
     "format": {
       "dependsOn": ["^format"]

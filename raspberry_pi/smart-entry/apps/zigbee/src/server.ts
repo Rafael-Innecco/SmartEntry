@@ -10,7 +10,7 @@ import {
 import { newUserSchema, renameUserRequestSchema, slotIdSchema } from "@workspace/shared"
 import { z } from "zod"
 
-import { ConflictError, LockTimeoutError, LockUnreachableError, NotFoundError } from "./errors.js"
+import { ConflictError, LockBusyError, LockTimeoutError, LockUnreachableError, NotFoundError, SyncRequiredError } from "./errors.js"
 import type { LockTransport } from "./lock-transport.js"
 import type { Services } from "./services.js"
 
@@ -37,6 +37,8 @@ function toErrorResponse(err: unknown): [number, object] {
   if (err instanceof SyntaxError) return [400, { error: "invalid JSON body" }]
   if (err instanceof NotFoundError) return [404, { error: err.message }]
   if (err instanceof ConflictError) return [409, { error: err.message }]
+  if (err instanceof LockBusyError) return [409, { error: err.message, code: "lock-busy" }]
+  if (err instanceof SyncRequiredError) return [409, { error: err.message, code: "sync-required" }]
   if (err instanceof LockUnreachableError) return [503, { error: err.message }]
   if (err instanceof LockTimeoutError) return [504, { error: err.message }]
   console.error(err)

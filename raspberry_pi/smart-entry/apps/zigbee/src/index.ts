@@ -5,6 +5,10 @@ import { createFakeLockTransport } from "./fake-lock-transport.js"
 
 const dbPath = process.env.SMART_ENTRY_DB_PATH ?? "./data/smart-entry.sqlite3"
 const port = Number(process.env.SMART_ENTRY_ZIGBEE_PORT ?? 4000)
+const transport = process.env.SMART_ENTRY_TRANSPORT ?? "fake"
+if (transport !== "fake") {
+  throw new Error(`Unsupported SMART_ENTRY_TRANSPORT: ${transport}. Real ZigBee is not implemented yet.`)
+}
 
 const db = createDb(dbPath)
 

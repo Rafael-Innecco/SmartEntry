@@ -15,12 +15,15 @@ export type ZigbeeError =
   | "invalid"
   | "not-found"
   | "slot-in-use"
+  | "lock-busy"
+  | "sync-required"
   | "lock-unreachable"
   | "lock-timeout"
   | "service-down"
   | "internal"
 
-export type ZigbeeResult<T> = { ok: true; data: T } | { ok: false; error: ZigbeeError }
+export type ZigbeeResult<T> =
+  { ok: true; data: T } | { ok: false; error: ZigbeeError }
 
 const ERROR_BY_STATUS: Partial<Record<number, ZigbeeError>> = {
   400: "invalid",
@@ -34,7 +37,10 @@ const ERROR_BY_STATUS: Partial<Record<number, ZigbeeError>> = {
 const REQUEST_TIMEOUT_MS = 20_000
 
 /** Typed client for apps/zigbee's internal API. Never throws for transport or HTTP errors. */
-export function createZigbeeClient(baseUrl: string, timeoutMs = REQUEST_TIMEOUT_MS) {
+export function createZigbeeClient(
+  baseUrl: string,
+  timeoutMs = REQUEST_TIMEOUT_MS
+) {
   async function request<S extends z.ZodType>(
     schema: S,
     method: string,
@@ -46,15 +52,38 @@ export function createZigbeeClient(baseUrl: string, timeoutMs = REQUEST_TIMEOUT_
       response = await fetch(new URL(path, baseUrl), {
         method,
         cache: "no-store",
-        headers: body === undefined ? undefined : { "content-type": "application/json" },
+        headers:
+          body === undefined
+            ? undefined
+            : { "content-type": "application/json" },
         body: body === undefined ? undefined : JSON.stringify(body),
         signal: AbortSignal.timeout(timeoutMs),
       })
     } catch {
       return { ok: false, error: "service-down" }
     }
-    if (!response.ok) return { ok: false, error: ERROR_BY_STATUS[response.status] ?? "internal" }
-    return { ok: true, data: schema.parse(await response.json()) }
+    try {
+      if (!response.ok) {
+        if (response.status === 409) {
+          const body: unknown = await response.json()
+          if (
+            body &&
+            typeof body === "object" &&
+            "code" in body &&
+            (body.code === "lock-busy" || body.code === "sync-required")
+          ) {
+            return { ok: false, error: body.code }
+          }
+        }
+        return {
+          ok: false,
+          error: ERROR_BY_STATUS[response.status] ?? "internal",
+        }
+      }
+      return { ok: true, data: schema.parse(await response.json()) }
+    } catch {
+      return { ok: false, error: "internal" }
+    }
   }
 
   return {
@@ -62,12 +91,15 @@ export function createZigbeeClient(baseUrl: string, timeoutMs = REQUEST_TIMEOUT_
     status: () => request(statusResponseSchema, "GET", "/status"),
     unlock: () => request(okResponseSchema, "POST", "/unlock"),
     listUsers: () => request(usersResponseSchema, "GET", "/users"),
-    registerUser: (user: NewUser) => request(registerUserResponseSchema, "POST", "/users", user),
+    registerUser: (user: NewUser) =>
+      request(registerUserResponseSchema, "POST", "/users", user),
     renameUser: (id: number, name: string) =>
       request(renameUserResponseSchema, "PATCH", `/users/${id}`, { name }),
-    removeUser: (id: number) => request(okResponseSchema, "DELETE", `/users/${id}`),
+    removeUser: (id: number) =>
+      request(okResponseSchema, "DELETE", `/users/${id}`),
     sync: () => request(syncResponseSchema, "POST", "/sync"),
-    accessLog: (limit: number) => request(accessLogResponseSchema, "GET", `/access-log?limit=${limit}`),
+    accessLog: (limit: number) =>
+      request(accessLogResponseSchema, "GET", `/access-log?limit=${limit}`),
   }
 }
 

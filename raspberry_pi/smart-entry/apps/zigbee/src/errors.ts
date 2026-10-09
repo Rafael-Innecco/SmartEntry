@@ -25,3 +25,17 @@ export class ConflictError extends Error {
     this.name = "ConflictError"
   }
 }
+
+export class LockBusyError extends Error {
+  constructor() {
+    super("another lock operation is still pending")
+    this.name = "LockBusyError"
+  }
+}
+
+export class SyncRequiredError extends Error {
+  constructor() {
+    super("sync required after an uncertain write")
+    this.name = "SyncRequiredError"
+  }
+}
