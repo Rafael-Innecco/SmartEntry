@@ -4,6 +4,7 @@
 #include "freertos/task.h"
 #include "gpio.h"
 #include "portmacro.h"
+#include "driver/gpio.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -18,7 +19,7 @@ const char KBD_ARR[] = {'1', '4', '7', '*', '2', '5', '8', '0',
 
 QueueHandle_t xKeyboardQueue;
 
-void readKeyboardQueue() {
+int readKeyboardQueue(char* c) {
     char lKeyboardReceived;
     BaseType_t xKeyboardQueueStatus;
     const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
@@ -27,13 +28,14 @@ void readKeyboardQueue() {
         xQueueReceive(xKeyboardQueue, &lKeyboardReceived, xTicksToWait);
 
     if (xKeyboardQueueStatus == pdPASS) {
-        printf("Queue Read: %c\n", lKeyboardReceived);
+        *c = lKeyboardReceived;
+        return 0;
     } else {
-        printf("Empty Queue\n");
+        return 1;
     }
 }
 
-void initialize_kbd_gpios(void) {
+int initializeKbdGpio(void) {
     for (int r = 0; r < KBD_ROWS; r++) {
         gpio_set_direction(ROW_PINS[r], GPIO_MODE_INPUT);
         gpio_set_pull_mode(ROW_PINS[r], GPIO_PULLUP_ONLY);
@@ -42,6 +44,8 @@ void initialize_kbd_gpios(void) {
         gpio_set_direction(COL_PINS[c], GPIO_MODE_OUTPUT);
         gpio_set_level(COL_PINS[c], 1); // idle high
     }
+    xKeyboardQueue = xQueueCreate(10, sizeof(char));
+    return 0;
 }
 
 char check_kbd() {
@@ -71,10 +75,8 @@ void writeToQueue(char value) {
 
 void vKeyboardTask(void *pvParameters) {
     printf("\033[32mStarting keyboard task\033[0m\n");
-    xKeyboardQueue = xQueueCreate(10, sizeof(char));
     printf("\033[32mKeyboard Initialized\033[0m\n");
     fflush(stdout);
-    initialize_kbd_gpios();
 
     int ret = '\0';
     for (;;) {
@@ -84,7 +86,7 @@ void vKeyboardTask(void *pvParameters) {
             fflush(stdout);
         }
 
-        vTaskDelay(200 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 
     // Should never run, insurance against the task exiting

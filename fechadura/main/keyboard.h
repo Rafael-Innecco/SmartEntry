@@ -6,11 +6,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
-void initialize_kbd_gpios(void);
+int readKeyboardQueue(char* c);
 char check_kbd();
-
 void vKeyboardTask(void *pvParameters);
-
-void readKeyboardQueue();
+int initializeKbdGpio(void);
 
 #endif

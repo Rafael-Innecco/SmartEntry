@@ -13,10 +13,13 @@
 #include "freertos/task.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
+
 #include <inttypes.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "keyboard.h"
+#include "lock.h"
 
 void app_main(void) {
     printf("Hello world - GPIOD!\n");
@@ -49,15 +52,49 @@ void app_main(void) {
     printf("Minimum free heap size: %" PRIu32 " bytes\n",
            esp_get_minimum_free_heap_size());
 
+    printf("initializing kbd...\n");
+    if (initializeKbdGpio()) {
+        printf("kbd intialization failed\n");
+        return;
+    }
+
+    printf("initializing lock...\n");
+    if (initLock()) {
+        printf("lock intialization failed\n");
+        return;
+    }
+
     TaskHandle_t xKeyboardHandle = NULL;
     BaseType_t xKeyboardReturned;
-    xKeyboardReturned = xTaskCreate(vKeyboardTask, "KEYBOARD", 500,
+    xKeyboardReturned = xTaskCreate(vKeyboardTask, "KEYBOARD", 1000,
                                     (void *)NULL, 2, &xKeyboardHandle);
 
+    TaskHandle_t xLockHandle = NULL;
+    BaseType_t xLockReturned;
+    xLockReturned = xTaskCreate(vLockTask, "LOCK", 1000,
+                                   (void *)NULL, 2, &xLockHandle);
+
+    char pass[4];
+    int i = 0;
+
     for (;;) {
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-        readKeyboardQueue();
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+
+        int is_queue_empty = readKeyboardQueue(&pass[i]);
+
+        if (is_queue_empty) {
+            continue;
+        }
+
+        printf("%d: read %c\n", i, pass[i]);
+        i = (i + 1) % 4;
+
+        if ((i == 0) && !strncmp(pass, "1234", 4)) {
+            printf("ABRIU\n");
+            openDoor();
+        }
     }
+
     printf("Restarting now.\n");
     fflush(stdout);
     esp_restart();

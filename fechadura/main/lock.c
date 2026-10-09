@@ -3,22 +3,32 @@
 #include "freertos/task.h"
 #include "gpio.h"
 
-SemaphoreHandle_t lock_mutex;
+SemaphoreHandle_t lock_semaph;
 
-void initLock(void) {
-    gpio_set_direction(GPIO_NUM_8, GPIO_MODE_OUTPUT);
-    lock_mutex = xSemaphoreCreateMutex();
-    xSemaphoreTake(lock_mutex);
-    gpio_set_level(GPIO_NUM_8, 0);
+int initLock(void) {
+    gpio_set_direction(LOCK_CONTROL_PIN, GPIO_MODE_OUTPUT);
+    lock_semaph = xSemaphoreCreateBinary();
+
+    if (lock_semaph == NULL) {
+        return 1;
+    }
+
+    gpio_set_level(LOCK_CONTROL_PIN, 0);
+
+    return 0;
 }
 
-void openDoor() { xSemaphoreGive(lock_mutex); }
+void openDoor() { 
+    if (xSemaphoreGive(lock_semaph) != pdTRUE) {
+        printf("FAILED TO OPEN DOOR\n");
+    }
+}
 
-void vlockTask(void *pvParameters) {
+void vLockTask(void *pvParameters) {
     for (;;) {
-        xSemaphoreTake(lock_mutex);
-        gpio_set_level(GPIO_NUM_8, 1);
+        xSemaphoreTake(lock_semaph, portMAX_DELAY);
+        gpio_set_level(LOCK_CONTROL_PIN, 1);
         vTaskDelay(1000 / portTICK_PERIOD_MS);
-        gpio_set_level(GPIO_NUM_8, 0);
+        gpio_set_level(LOCK_CONTROL_PIN, 0);
     }
 }

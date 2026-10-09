@@ -2,8 +2,8 @@
 
 #define LOCK_H
 
-void initLock(void);
 void openDoor(void);
-void vlockTask(void *pvParameters);
+void vLockTask(void *pvParameters);
+int initLock(void);
 
 #endif
