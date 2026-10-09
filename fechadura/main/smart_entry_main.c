@@ -20,6 +20,8 @@
 
 #include "keyboard.h"
 #include "lock.h"
+#include "password.h"
+#include "totp/totp.h"
 
 void app_main(void) {
     printf("Hello world - GPIOD!\n");
@@ -74,24 +76,30 @@ void app_main(void) {
     xLockReturned = xTaskCreate(vLockTask, "LOCK", 1000,
                                    (void *)NULL, 2, &xLockHandle);
 
-    char pass[4];
+    uint8_t pass[TOTP_CODELEN];
     int i = 0;
 
     for (;;) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
 
-        int is_queue_empty = readKeyboardQueue(&pass[i]);
+        char c;
+        int is_queue_empty = readKeyboardQueue(&c);
 
         if (is_queue_empty) {
             continue;
-        }
+        } else if (('0' > c) || (c > '9')) {
+            i = 0;
+            continue;
+        } else {
+            pass[i] = c - '0';
+            printf("%d: read %d\n", i, pass[i]);
 
-        printf("%d: read %c\n", i, pass[i]);
-        i = (i + 1) % 4;
+            i = (i + 1) % TOTP_CODELEN;
 
-        if ((i == 0) && !strncmp(pass, "1234", 4)) {
-            printf("ABRIU\n");
-            openDoor();
+            if ((i == 0) && checkCode(pass)) {
+                printf("OPEN SESAME\n");
+                openDoor();
+            }
         }
     }
 

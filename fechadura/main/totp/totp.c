@@ -1,24 +1,11 @@
-#include "hmac.h"
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
 
-#define KEYLEN 32
-
-uint8_t key[32] = {
-    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
-    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
-};
-
-typedef struct totp {
-    void *key;       // secret key
-    size_t keylen;   // key size
-    uint64_t t0;     // start epoch
-    uint8_t tx;      // one-time duration
-    uint8_t codelen; // code size (e.g. 6 or 8)
-} totp;
+#include "hmac.h"
+#include "totp.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 /// TOTP and HOTP implementation
@@ -54,9 +41,9 @@ void compute_hotp(const void *key, const size_t keylen, uint64_t counter,
     }
 }
 
-void compute_totp(const totp *config, uint64_t current_time, uint8_t *output) {
-    uint64_t counter = (current_time - config->t0) / config->tx;
-    compute_hotp(config->key, config->keylen, counter, config->codelen, output);
+void compute_totp(const void *key, uint64_t current_time, uint8_t *output) {
+    uint64_t counter = (current_time - TOTP_T0) / TOTP_TX;
+    compute_hotp(key, TOTP_KEYLEN, counter, TOTP_CODELEN, output);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -94,50 +81,51 @@ size_t base32_encode(const uint8_t *data, const size_t len, char *out,
     return pos;
 }
 
-size_t build_otpauth_url(const totp *config, const char *issuer,
+size_t build_otpauth_url(const void *key, const char *issuer,
                          const char *account, char *out, const size_t outlen) {
     char secret[128];
-    if (base32_encode(config->key, config->keylen, secret, sizeof(secret)) ==
-        0) {
+    if (base32_encode(key, TOTP_KEYLEN, secret, sizeof(secret)) == 0) {
         return 0;
     }
 
     int n =
         snprintf(out, outlen,
                  "otpauth://totp/%s:%s?secret=%s&issuer=%s&digits=%u&period=%u",
-                 issuer, account, secret, issuer, config->codelen, config->tx);
+                 issuer, account, secret, issuer, TOTP_CODELEN, TOTP_TX);
     if (n < 0 || (size_t)n >= outlen) {
         return 0;
     }
     return n;
 }
 
-int main(int argc, char **argv) {
-    const totp mytotp = {
-        .key = key,
-        .keylen = KEYLEN,
-        .t0 = 0,
-        .tx = 30,
-        .codelen = 6,
-    };
-
-    char url[256];
-    if (build_otpauth_url(&mytotp, "SmartEntry", "lock", url, sizeof(url))) {
-        printf("%s\n", url);
-    }
-
-    // compute totp, wait for tx, print next code, repeat
-    uint8_t code[8];
-    while (1) {
-        uint64_t now = time(NULL);
-        compute_totp(&mytotp, now, code);
-        printf("step %llu: ",
-               (unsigned long long)((now - mytotp.t0) / mytotp.tx));
-        print_digits(code, mytotp.codelen);
-        printf("\n");
-        fflush(stdout);
-        sleep(mytotp.tx - (now - mytotp.t0) % mytotp.tx);
-    }
-
-    return 0;
-}
+//// usage example:
+//
+//int main(int argc, char **argv) {
+//    const totp mytotp = {
+//        .key = key,
+//        .keylen = KEYLEN,
+//        .t0 = 0,
+//        .tx = 30,
+//        .codelen = 6,
+//    };
+//
+//    char url[256];
+//    if (build_otpauth_url(&mytotp, "SmartEntry", "lock", url, sizeof(url))) {
+//        printf("%s\n", url);
+//    }
+//
+//    // compute totp, wait for tx, print next code, repeat
+//    uint8_t code[8];
+//    while (1) {
+//        uint64_t now = time(NULL);
+//        compute_totp(&mytotp, now, code);
+//        printf("step %llu: ",
+//               (unsigned long long)((now - mytotp.t0) / mytotp.tx));
+//        print_digits(code, mytotp.codelen);
+//        printf("\n");
+//        fflush(stdout);
+//        sleep(mytotp.tx - (now - mytotp.t0) % mytotp.tx);
+//    }
+//
+//    return 0;
+//}

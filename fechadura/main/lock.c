@@ -1,6 +1,7 @@
 #include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+
 #include "gpio.h"
 
 SemaphoreHandle_t lock_semaph;
