@@ -1,11 +1,11 @@
 #ifndef __HMAC_H__
 #define __HMAC_H__
 
-#include <stdint.h>
 #include "sha1.h"
+#include <stdint.h>
 
 #define HMAC_SHA1_DIGEST_SIZE 20
-#define HMAC_SHA1_BLOCK_SIZE  64
+#define HMAC_SHA1_BLOCK_SIZE 64
 
 /***********************************************************************'
  * HMAC(K,m)      : HMAC SHA1
@@ -15,9 +15,7 @@
  * @param msgsize : msg-length in bytes
  * @param output  : writeable buffer with at least 20 bytes available
  */
-void hmac_sha1(const uint8_t* key, const uint32_t keysize, const uint8_t* msg, const uint32_t msgsize, uint8_t* output);
-
+void hmac_sha1(const uint8_t *key, const uint32_t keysize, const uint8_t *msg,
+               const uint32_t msgsize, uint8_t *output);
 
 #endif /* __HMAC_H__ */
-
-
