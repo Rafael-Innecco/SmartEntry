@@ -1,0 +1,730 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Plano SmartEntry</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --bg: #f2f4f1;
+    --surface: #ffffff;
+    --surface-2: #e9ede9;
+    --ink: #17201d;
+    --muted: #5a6762;
+    --line: #d2d9d4;
+    --accent: #a65722;
+    --accent-soft: #f4e4d7;
+    --ok: #2b784a;
+    --ok-soft: #e0efe5;
+    --next: #2b58a0;
+    --next-soft: #e1e9f6;
+    --ext: #7a4686;
+    --ext-soft: #f0e5f2;
+    --plan: #74817c;
+    --plan-soft: #eceeec;
+    --high: #a13832;
+    --mid: #9a6512;
+    --low: #5a6762;
+    --display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+    --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #111614;
+      --surface: #18201d;
+      --surface-2: #1f2925;
+      --ink: #e1e8e4;
+      --muted: #94a39c;
+      --line: #2d3833;
+      --accent: #dc8c54;
+      --accent-soft: #3a2a1e;
+      --ok: #62bb85;
+      --ok-soft: #1b3226;
+      --next: #81a7e7;
+      --next-soft: #1d2a40;
+      --ext: #c896d4;
+      --ext-soft: #2d2233;
+      --plan: #8e9b95;
+      --plan-soft: #222b27;
+      --high: #e47c74;
+      --mid: #e0a64a;
+      --low: #94a39c;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #111614;
+    --surface: #18201d;
+    --surface-2: #1f2925;
+    --ink: #e1e8e4;
+    --muted: #94a39c;
+    --line: #2d3833;
+    --accent: #dc8c54;
+    --accent-soft: #3a2a1e;
+    --ok: #62bb85;
+    --ok-soft: #1b3226;
+    --next: #81a7e7;
+    --next-soft: #1d2a40;
+    --ext: #c896d4;
+    --ext-soft: #2d2233;
+    --plan: #8e9b95;
+    --plan-soft: #222b27;
+    --high: #e47c74;
+    --mid: #e0a64a;
+    --low: #94a39c;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .wrap {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-inline: 20px;
+    padding-block: 32px 64px;
+    display: grid;
+    gap: 56px;
+  }
+  h1, h2, h3 {
+    font-family: var(--display);
+    text-wrap: balance;
+    margin: 0;
+    line-height: 1.15;
+  }
+  h1 { font-size: clamp(30px, 5vw, 42px); font-weight: 700; letter-spacing: -0.01em; }
+  h2 { font-size: 26px; font-weight: 600; }
+  h3 { font-size: 19px; font-weight: 600; }
+  p { margin: 0; }
+  code, .mono { font-family: var(--mono); font-size: 0.86em; }
+  code {
+    background: var(--surface-2);
+    border-radius: 4px;
+    padding: 1px 5px;
+    white-space: nowrap;
+  }
+  a { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+  /* Header */
+  header.top { display: grid; gap: 18px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .lede { max-width: 68ch; color: var(--muted); font-size: 16px; }
+  .meta { font-size: 13px; color: var(--muted); }
+
+  .phasebar { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+  .phasebar span {
+    display: grid;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--muted);
+  }
+  .phasebar span::before {
+    content: "";
+    height: 8px;
+    border-radius: 2px;
+    background: var(--plan-soft);
+    border: 1px solid var(--line);
+  }
+  .phasebar .s-done::before { background: var(--ok); border-color: var(--ok); }
+  .phasebar .s-next::before { background: var(--next-soft); border-color: var(--next); }
+  .phasebar .s-wait::before { background: var(--ext-soft); border-color: var(--ext); }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 28px;
+    margin: 0;
+  }
+  .stats div { display: grid; }
+  .stats dt { font-size: 12.5px; color: var(--muted); }
+  .stats dd {
+    margin: 0;
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  nav.toc { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 14px; }
+  nav.toc a { text-decoration: none; border-bottom: 1px solid var(--accent-soft); }
+  nav.toc a:hover { border-bottom-color: var(--accent); }
+
+  section { display: grid; gap: 18px; scroll-margin-top: 16px; }
+  .section-head { display: grid; gap: 6px; }
+  .section-head p { color: var(--muted); max-width: 68ch; }
+
+  /* Pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 9px;
+    border-radius: 999px;
+    border: 1px solid currentColor;
+    white-space: nowrap;
+  }
+  .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.done { color: var(--ok); background: var(--ok-soft); }
+  .pill.next { color: var(--next); background: var(--next-soft); }
+  .pill.wait { color: var(--ext); background: var(--ext-soft); }
+  .pill.plan { color: var(--plan); background: var(--plan-soft); }
+
+  /* Diagram */
+  .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  .legend i { width: 22px; height: 14px; border-radius: 3px; display: inline-block; }
+  .legend .k-ok { background: var(--ok-soft); border: 1.5px solid var(--ok); }
+  .legend .k-plan { background: var(--plan-soft); border: 1.5px dashed var(--plan); }
+  .legend .k-ext { background: var(--ext-soft); border: 1.5px dotted var(--ext); }
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; width: 100%; min-width: 760px; height: auto; }
+  .d-neutral { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+  .d-pi { fill: var(--bg); stroke: var(--line); stroke-width: 1.5; }
+  .d-ok { fill: var(--ok-soft); stroke: var(--ok); stroke-width: 1.5; }
+  .d-plan { fill: var(--plan-soft); stroke: var(--plan); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .d-ext { fill: var(--ext-soft); stroke: var(--ext); stroke-width: 1.5; stroke-dasharray: 2 3; }
+  .d-chip-ok { fill: var(--surface); stroke: var(--ok); stroke-width: 1; }
+  .d-chip-plan { fill: var(--surface); stroke: var(--plan); stroke-width: 1; stroke-dasharray: 4 3; }
+  .d-title { fill: var(--ink); font-family: var(--display); font-size: 16px; font-weight: 600; }
+  .d-sub { fill: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  .d-chip { fill: var(--ink); font-family: var(--mono); font-size: 11.5px; }
+  .d-chip-muted { fill: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  .d-label { fill: var(--muted); font-family: var(--mono); font-size: 11.5px; }
+  .d-edge { stroke: var(--muted); stroke-width: 1.5; fill: none; }
+  .d-arrow { fill: var(--muted); }
+
+  .flows {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 10px 18px;
+    margin: 0;
+    font-size: 14.5px;
+  }
+  .flows dt { font-family: var(--display); font-weight: 600; font-size: 16px; }
+  .flows dd { margin: 0; color: var(--muted); }
+  @media (max-width: 560px) {
+    .flows { grid-template-columns: 1fr; gap: 2px; }
+    .flows dd { margin-bottom: 10px; }
+  }
+
+  /* Phases */
+  .phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+  .phase {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+  }
+  .phase.is-done { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+  .phase.is-next { border-color: color-mix(in srgb, var(--next) 55%, var(--line)); }
+  .phase-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .phase-num { font-family: var(--mono); font-size: 12px; color: var(--muted); display: block; }
+  .phase .when { font-size: 13.5px; color: var(--muted); }
+  .phase .when strong { color: var(--ink); font-weight: 500; }
+  .checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font-size: 14px; }
+  .checks li { display: grid; grid-template-columns: 16px 1fr; gap: 9px; align-items: start; }
+  .checks li::before {
+    content: "";
+    width: 14px;
+    height: 14px;
+    margin-top: 3px;
+    border: 1.5px solid var(--plan);
+    border-radius: 3px;
+  }
+  .checks li.done::before {
+    background: var(--ok);
+    border-color: var(--ok);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M3 7.2l2.6 2.6L11 4.4' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  }
+  .deps { font-size: 12.5px; color: var(--muted); }
+
+  /* Tables */
+  .scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  th {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+    background: var(--surface-2);
+  }
+  td.key { font-family: var(--mono); font-size: 13px; white-space: nowrap; }
+  .tag-fw { font-size: 11.5px; color: var(--ext); white-space: nowrap; }
+  .impact { font-weight: 600; font-size: 13px; }
+  .impact.high { color: var(--high); }
+  .impact.mid { color: var(--mid); }
+  .impact.low { color: var(--low); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .callout {
+    border-left: 3px solid var(--ext);
+    background: var(--ext-soft);
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    display: grid;
+    gap: 8px;
+  }
+  .callout ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 14px; }
+
+  footer { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 18px; }
+
+  @media (max-width: 560px) {
+    .phasebar span { font-size: 10px; }
+  }
+</style>
+
+<style>body { margin: 0; } img { max-width: 100%; }</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">PCS3848 · Sistemas Embarcados · Poli-USP</p>
+    <h1>Plano de desenvolvimento do SmartEntry</h1>
+    <p class="lede">Lado Raspberry Pi da fechadura SmartEntry: a interface web, a ponte ZigBee e a réplica local de usuários. A fechadura (ESP32-H2) é desenvolvida por outro time e aparece aqui como a interface que precisamos combinar.</p>
+    <p class="meta">Atualizado em 2 de outubro de 2026, depois da implementação da Fase 2.</p>
+
+    <div class="phasebar" aria-label="Situação das fases">
+      <span class="s-done" title="Fase 0 · Ajustes na base · concluída">F0</span>
+      <span class="s-done" title="Fase 1 · Testes automatizados · concluída">F1</span>
+      <span class="s-next" title="Fase 2 · apps/web · implementada, falta validar no navegador">F2</span>
+      <span title="Fase 3 · Deploy no Pi · planejada">F3</span>
+      <span class="s-wait" title="Fase 4 · ZigBee real · aguarda firmware">F4</span>
+      <span title="Fase 5 · Segurança · planejada">F5</span>
+      <span title="Fase 6 · Integração · planejada">F6</span>
+      <span title="Fase 7 · RFID · opcional">F7</span>
+    </div>
+
+    <dl class="stats">
+      <div><dt>Fases concluídas</dt><dd>2 de 8</dd></div>
+      <div><dt>Testes passando</dt><dd>45</dd></div>
+      <div><dt>Rotas na API interna</dt><dd>9</dd></div>
+      <div><dt>Decisões fechadas</dt><dd>10 de 10</dd></div>
+    </dl>
+
+    <nav class="toc" aria-label="Seções">
+      <a href="#arquitetura">Arquitetura</a>
+      <a href="#fases">Fases</a>
+      <a href="#decisoes">Decisões</a>
+      <a href="#api">API interna</a>
+      <a href="#dados">Dados</a>
+      <a href="#protocolo">Protocolo ZigBee</a>
+      <a href="#riscos">Riscos</a>
+    </nav>
+  </header>
+
+  <section id="arquitetura">
+    <div class="section-head">
+      <h2>Arquitetura final</h2>
+      <p>Dois processos isolados no systemd. Só o Caddy fica exposto na rede; o Next e o <code>apps/zigbee</code> escutam apenas em <code>127.0.0.1</code>.</p>
+    </div>
+    <div class="legend">
+      <span><i class="k-ok"></i>Implementado</span>
+      <span><i class="k-plan"></i>Planejado</span>
+      <span><i class="k-ext"></i>Outro time (firmware)</span>
+    </div>
+    <figure class="diagram" style="margin:0">
+      <svg viewBox="0 0 900 730" role="img" aria-labelledby="diagram-title">
+        <title id="diagram-title">Arquitetura: navegador, Caddy, apps/web, apps/zigbee com SQLite e dongle ZigBee no Raspberry Pi, ligados por rádio à fechadura ESP32-H2</title>
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" class="d-arrow"/>
+          </marker>
+        </defs>
+
+        <!-- Browser -->
+        <rect x="320" y="12" width="260" height="52" rx="8" class="d-neutral"/>
+        <text x="450" y="35" text-anchor="middle" class="d-title">Navegador do admin</text>
+        <text x="450" y="53" text-anchor="middle" class="d-sub">celular ou PC na LAN</text>
+
+        <line x1="450" y1="64" x2="450" y2="120" class="d-edge" marker-end="url(#arrow)"/>
+        <text x="462" y="92" class="d-label">HTTPS :443</text>
+
+        <!-- Raspberry Pi boundary -->
+        <rect x="16" y="104" width="868" height="470" rx="14" class="d-pi"/>
+        <text x="36" y="132" class="d-title">Raspberry Pi 3B+</text>
+        <text x="36" y="150" class="d-sub">Raspberry Pi OS 64-bit · systemd</text>
+
+        <!-- Caddy -->
+        <rect x="320" y="124" width="260" height="54" rx="8" class="d-plan"/>
+        <text x="450" y="147" text-anchor="middle" class="d-title">Caddy · tls internal</text>
+        <text x="450" y="166" text-anchor="middle" class="d-sub">0.0.0.0:443 · Fase 3</text>
+
+        <line x1="450" y1="178" x2="450" y2="212" class="d-edge" marker-end="url(#arrow)"/>
+        <text x="462" y="200" class="d-label">HTTP 127.0.0.1:3000</text>
+
+        <!-- apps/web -->
+        <rect x="250" y="216" width="400" height="66" rx="8" class="d-ok"/>
+        <text x="450" y="243" text-anchor="middle" class="d-title">apps/web · Next.js 16</text>
+        <text x="450" y="264" text-anchor="middle" class="d-sub">login · início · usuários · acessos · Fase 2</text>
+
+        <line x1="450" y1="282" x2="450" y2="324" class="d-edge" marker-end="url(#arrow)"/>
+        <text x="462" y="308" class="d-label">HTTP 127.0.0.1:4000</text>
+
+        <!-- apps/zigbee -->
+        <rect x="212" y="328" width="476" height="150" rx="8" class="d-ok"/>
+        <text x="450" y="353" text-anchor="middle" class="d-title">apps/zigbee · Node</text>
+        <text x="450" y="372" text-anchor="middle" class="d-sub">127.0.0.1:4000 · Fases 0 e 1 concluídas</text>
+
+        <rect x="224" y="386" width="104" height="26" rx="5" class="d-chip-ok"/>
+        <text x="276" y="403" text-anchor="middle" class="d-chip">rotas HTTP</text>
+        <rect x="340" y="386" width="104" height="26" rx="5" class="d-chip-ok"/>
+        <text x="392" y="403" text-anchor="middle" class="d-chip">services</text>
+        <rect x="456" y="386" width="104" height="26" rx="5" class="d-chip-ok"/>
+        <text x="508" y="403" text-anchor="middle" class="d-chip">TOTP</text>
+        <rect x="572" y="386" width="104" height="26" rx="5" class="d-chip-ok"/>
+        <text x="624" y="403" text-anchor="middle" class="d-chip">LockTransport</text>
+
+        <rect x="224" y="422" width="112" height="26" rx="5" class="d-chip-ok"/>
+        <text x="280" y="439" text-anchor="middle" class="d-chip">stub (dev)</text>
+        <rect x="348" y="422" width="178" height="26" rx="5" class="d-chip-plan"/>
+        <text x="437" y="439" text-anchor="middle" class="d-chip-muted">transporte ZigBee · F4</text>
+        <rect x="538" y="422" width="138" height="26" rx="5" class="d-chip-plan"/>
+        <text x="607" y="439" text-anchor="middle" class="d-chip-muted">time-guard · F4</text>
+
+        <!-- SQLite -->
+        <line x1="212" y1="403" x2="184" y2="403" class="d-edge" marker-end="url(#arrow)"/>
+        <rect x="32" y="328" width="150" height="150" rx="8" class="d-ok"/>
+        <text x="107" y="353" text-anchor="middle" class="d-title">SQLite · WAL</text>
+        <text x="50" y="382" class="d-chip">users</text>
+        <text x="50" y="401" class="d-chip">lock_status</text>
+        <text x="50" y="420" class="d-chip">access_log</text>
+        <text x="50" y="439" class="d-chip">link_state</text>
+        <text x="107" y="466" text-anchor="middle" class="d-sub">réplica local</text>
+
+        <!-- Dongle -->
+        <line x1="688" y1="403" x2="716" y2="403" class="d-edge" marker-end="url(#arrow)"/>
+        <rect x="718" y="343" width="150" height="120" rx="8" class="d-plan"/>
+        <text x="793" y="368" text-anchor="middle" class="d-title">ZBDongle-P</text>
+        <text x="793" y="388" text-anchor="middle" class="d-sub">CC2652P · zstack</text>
+        <text x="793" y="406" text-anchor="middle" class="d-sub">zigbee-herdsman</text>
+        <text x="793" y="447" text-anchor="middle" class="d-sub">Fase 4</text>
+
+        <!-- packages/shared -->
+        <rect x="32" y="510" width="656" height="40" rx="8" class="d-ok"/>
+        <text x="360" y="535" text-anchor="middle" class="d-chip">packages/shared · contratos Zod usados por web, zigbee e db</text>
+
+        <!-- Radio link -->
+        <line x1="793" y1="463" x2="793" y2="626" class="d-edge" marker-end="url(#arrow)"/>
+        <text x="781" y="606" text-anchor="end" class="d-label">ZigBee 802.15.4 · AES-128 + HMAC</text>
+
+        <!-- Lock -->
+        <rect x="600" y="630" width="268" height="90" rx="8" class="d-ext"/>
+        <text x="734" y="655" text-anchor="middle" class="d-title">Fechadura ESP32-H2</text>
+        <text x="734" y="674" text-anchor="middle" class="d-sub">sleepy end device · poll 3–5 s</text>
+        <text x="734" y="693" text-anchor="middle" class="d-sub">0x0101 · 0x000A · 0xFC00</text>
+        <text x="734" y="711" text-anchor="middle" class="d-sub">guarda os segredos TOTP</text>
+      </svg>
+    </figure>
+
+    <dl class="flows">
+      <dt>Destravar</dt>
+      <dd>A web chama <code>POST /unlock</code>, o <code>apps/zigbee</code> envia <code>unlockDoor</code> com HMAC e espera a confirmação. Sem resposta em 15 s, devolve 504. Sucesso ou falha vão para o log como <code>remote</code>.</dd>
+      <dt>Cadastrar</dt>
+      <dd>O Pi gera o segredo TOTP, envia com <code>setUser</code> e só grava o usuário depois da confirmação, sem o segredo. A web mostra o QR code uma única vez.</dd>
+      <dt>Sincronizar</dt>
+      <dd>No boot e pelo botão: <code>listSlots</code> devolve 10 bytes, o Pi faz merge por slot (mantém os nomes) e grava <code>synced_at</code>.</dd>
+      <dt>Status</dt>
+      <dd>A fechadura reporta <code>lockState</code> quando muda. A web consulta <code>/status</code> a cada 3 s.</dd>
+      <dt>Hora</dt>
+      <dd>A fechadura lê a hora do Pi no boot e uma vez por dia. O Pi só responde se o relógio foi sincronizado por NTP.</dd>
+    </dl>
+  </section>
+
+  <section id="fases">
+    <div class="section-head">
+      <h2>Fases</h2>
+      <p>As Fases 2 e 3 andam em paralelo com o stub da fechadura. A Fase 4 depende do dongle e do protocolo combinado com o time do firmware, por isso o spike de ZigBee deve começar assim que o dongle chegar.</p>
+    </div>
+    <div class="phases">
+
+      <article class="phase is-done">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 0</span>Ajustes na base</h3>
+          <span class="pill done">Concluída</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> todas as rotas funcionam contra o stub, inclusive os casos de erro.</p>
+        <ul class="checks">
+          <li class="done">Interface <code>LockTransport</code> no formato do protocolo</li>
+          <li class="done">Erros tipados e stub configurável (atraso ou fechadura inacessível)</li>
+          <li class="done">Sync com merge por slot, mantendo os nomes e gravando <code>synced_at</code></li>
+          <li class="done">Sync automático na inicialização, sem travar o servidor</li>
+          <li class="done">Segredo TOTP de 20 bytes e URI <code>otpauth://</code></li>
+          <li class="done">Tabelas <code>access_log</code> e <code>link_state</code>; slot limitado a 0–9 no banco</li>
+          <li class="done">Rotas <code>PATCH</code>, <code>DELETE /users/:id</code>, <code>/health</code>, <code>/access-log</code> e erros 409, 503, 504</li>
+        </ul>
+      </article>
+
+      <article class="phase is-done">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 1</span>Testes automatizados</h3>
+          <span class="pill done">Concluída</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> <code>pnpm run test</code> passa.</p>
+        <ul class="checks">
+          <li class="done">Runner <code>node:test</code> via <code>tsx --test</code>, sem dependência nova</li>
+          <li class="done"><code>packages/db</code>: 10 testes (merge, transação, limite do log, contador)</li>
+          <li class="done"><code>apps/zigbee</code>: 20 testes (todas as rotas, erros 400 a 504, TOTP)</li>
+          <li class="done">Task <code>test</code> no Turborepo</li>
+        </ul>
+      </article>
+
+      <article class="phase is-next">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 2</span>Interface web</h3>
+          <span class="pill next">Validar no navegador</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> o fluxo completo funciona no navegador contra o stub.</p>
+        <ul class="checks">
+          <li class="done">Docs do Next 16 lidas (<code>proxy.ts</code>, <code>cookies()</code> assíncrono); <code>iron-session</code> 9 validado</li>
+          <li class="done">Login: <code>pnpm hash-password</code>, página <code>/login</code>, sessão de 12 h, 5 tentativas por minuto</li>
+          <li class="done">Sessão verificada em toda página, ação e rota de API</li>
+          <li class="done">Cliente tipado para <code>127.0.0.1:4000</code>, incluindo o caso do serviço fora do ar</li>
+          <li class="done">Início: estado da porta a cada 3 s e botão destravar com espera</li>
+          <li class="done">Usuários: lista, cadastro com QR mostrado uma vez, renomear, remover, sync</li>
+          <li class="done">Acessos com falhas em destaque e o nome gravado no momento do evento</li>
+          <li class="done">Avisos para fechadura desconectada e serviço fora do ar</li>
+          <li class="done">Migrações do banco por <code>PRAGMA user_version</code></li>
+          <li>Validar no navegador: cadastro com QR no celular, destravar, renomear, remover, largura de celular</li>
+        </ul>
+        <p class="deps">Login, logout, proteção das páginas e avisos de erro já testados por HTTP; 12 testes automatizados</p>
+      </article>
+
+      <article class="phase">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 3</span>Deploy no Raspberry Pi</h3>
+          <span class="pill plan">Planejada</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> o painel abre via HTTPS no Pi e volta sozinho depois de um reinício.</p>
+        <ul class="checks">
+          <li>Node 22.13+ arm64 (exigido pelo <code>iron-session</code> 9), pnpm, <code>build-essential</code> e <code>python3</code></li>
+          <li>Definir como o <code>apps/zigbee</code> roda em produção (hoje o <code>build</code> com <code>tsc</code> não serve)</li>
+          <li><code>/var/lib/smart-entry</code> para dados e <code>/etc/smart-entry</code> para segredos (permissão 600)</li>
+          <li>Serviços <code>smart-locker-web</code> e <code>smart-locker-zigbee</code> com <code>Restart=always</code></li>
+          <li>Caddy com <code>tls internal</code> na frente do Next</li>
+          <li>Usuário do serviço no grupo <code>dialout</code></li>
+          <li>Roteiro de atualização e teste de tirar o Pi da tomada</li>
+        </ul>
+        <p class="deps">Pode andar em paralelo com as Fases 1 e 2</p>
+      </article>
+
+      <article class="phase">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 4</span>ZigBee real</h3>
+          <span class="pill wait">Aguarda firmware</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> todas as rotas funcionam com a fechadura real.</p>
+        <ul class="checks">
+          <li>Spike: <code>zigbee-herdsman</code> + ZBDongle-P pareando um ESP32-H2 de teste</li>
+          <li>Chave de rede aleatória; pareamento só por script</li>
+          <li><code>ZigbeeLockTransport</code> com a mesma interface do stub</li>
+          <li>HMAC com o contador persistido em <code>link_state</code></li>
+          <li>Time-guard: hora só com NTP sincronizado; checar se o herdsman responde sozinho</li>
+          <li>Timeouts ajustados ao poll; transporte escolhido por <code>SMART_ENTRY_TRANSPORT</code></li>
+        </ul>
+        <p class="deps">Depende do dongle em mãos e do protocolo combinado</p>
+      </article>
+
+      <article class="phase">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 5</span>Revisão de segurança</h3>
+          <span class="pill plan">Planejada</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> os itens do RNF3 estão verificados no Pi.</p>
+        <ul class="checks">
+          <li>HTTPS ativo; cookies <code>HttpOnly</code>, <code>Secure</code> e <code>SameSite</code></li>
+          <li>Pareamento fechado; chaves com permissão 600</li>
+          <li>Teste de replay: comando reenviado é rejeitado</li>
+          <li>Apps só em <code>127.0.0.1</code>, conferido com <code>ss -tlnp</code></li>
+        </ul>
+        <p class="deps">Depende das Fases 3 e 4</p>
+      </article>
+
+      <article class="phase">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 6</span>Integração e validação</h3>
+          <span class="pill plan">Planejada</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> os cenários abaixo passam com o hardware real.</p>
+        <ul class="checks">
+          <li>Cadastro → QR no celular → <code>&lt;slot&gt;&lt;código&gt;#</code> na fechadura → porta abre → log</li>
+          <li>Latência do destravamento remoto medida</li>
+          <li>Fechadura desligada: erro claro e dados consistentes</li>
+          <li>11º usuário rejeitado</li>
+          <li>Pi sem internet não passa hora errada à fechadura</li>
+          <li>Queda de energia durante um sync; evidências de RNF2 a RNF5</li>
+        </ul>
+        <p class="deps">Depende das Fases 4 e 5</p>
+      </article>
+
+      <article class="phase">
+        <div class="phase-head">
+          <h3><span class="phase-num">Fase 7</span>RFID</h3>
+          <span class="pill plan">Opcional</span>
+        </div>
+        <p class="when"><strong>Pronto quando</strong> um cartão cadastrado abre a porta e aparece no log.</p>
+        <ul class="checks">
+          <li>Modo de cadastro do cartão na fechadura</li>
+          <li>Botão de cadastro na tela de usuários</li>
+          <li>Método <code>rfid</code> no log de acessos</li>
+        </ul>
+        <p class="deps">Fica para o fim, se houver tempo</p>
+      </article>
+
+    </div>
+  </section>
+
+  <section id="decisoes">
+    <div class="section-head">
+      <h2>Decisões</h2>
+      <p>As dez decisões estão fechadas. As marcadas com "com firmware" são propostas que o outro time precisa confirmar.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>#</th><th>Tema</th><th>Decisão</th></tr></thead>
+        <tbody>
+          <tr><td class="key">B1</td><td>Protocolo ZigBee<br><span class="tag-fw">com firmware</span></td><td>Híbrido: Door Lock <code>0x0101</code> e Time <code>0x000A</code> padrão, cluster próprio <code>0xFC00</code> para os slots. A fechadura não guarda nomes.</td></tr>
+          <tr><td class="key">B2</td><td>Dongle</td><td>Sonoff ZBDongle-P (CC2652P, driver <code>zstack</code>), acessado por <code>/dev/serial/by-id</code>.</td></tr>
+          <tr><td class="key">B3</td><td>Energia da fechadura<br><span class="tag-fw">com firmware</span></td><td>Sleepy end device com poll de 3–5 s (abaixo do limite de 7,68 s) e poll rápido após atividade. Timeout de 15 s na web.</td></tr>
+          <tr><td class="key">B4</td><td>Login do admin</td><td>Um admin, hash <code>scrypt</code> em <code>ADMIN_PASSWORD_HASH</code>, sessão com <code>iron-session</code>, limite de tentativas.</td></tr>
+          <tr><td class="key">B5</td><td>Criptografia (RNF3)</td><td>Chave de rede aleatória, pareamento só no cadastro, HMAC + contador nos comandos, HTTPS via Caddy.</td></tr>
+          <tr><td class="key">B6</td><td>Cadastro<br><span class="tag-fw">com firmware</span></td><td>O Pi gera o segredo TOTP, envia à fechadura e mostra o QR uma vez. O segredo não fica guardado no Pi.</td></tr>
+          <tr><td class="key">B7</td><td>Log de acessos</td><td>Sim: últimos 500 eventos e tela de acessos recentes.</td></tr>
+          <tr><td class="key">B8</td><td>Autenticação<br><span class="tag-fw">com firmware</span></td><td>Só TOTP por enquanto, digitado como <code>&lt;slot&gt;&lt;código&gt;#</code>. RFID fica opcional para o fim.</td></tr>
+          <tr><td class="key">B9</td><td>Status na web</td><td>Atualização a cada 3 s e logo depois de destravar.</td></tr>
+          <tr><td class="key">B10</td><td>Hora do TOTP<br><span class="tag-fw">com firmware</span></td><td>Sem módulo RTC. O Pi só informa a hora se sincronizada por NTP; a fechadura recusa saltos grandes.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="api">
+    <div class="section-head">
+      <h2>API interna do <code>apps/zigbee</code></h2>
+      <p>Escuta em <code>127.0.0.1:4000</code> e só a web chama. Toda escrita vai primeiro à fechadura; a réplica só muda depois da confirmação.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Rota</th><th>O que faz</th><th>Erros</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td class="key">GET /health</td><td>Processo vivo e conexão com a fechadura</td><td class="num">—</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">GET /status</td><td>Estado da porta</td><td class="num">—</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">POST /unlock</td><td>Destrava, espera a confirmação e registra no log</td><td class="num">503, 504</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">GET /users</td><td>Lista da réplica</td><td class="num">—</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">POST /users</td><td>Cadastra <code>{id, name}</code> e devolve o <code>totpUri</code> uma vez</td><td class="num">400, 409, 503, 504</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">PATCH /users/:id</td><td>Renomeia, só no Pi</td><td class="num">400, 404</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">DELETE /users/:id</td><td>Remove da fechadura e depois da réplica</td><td class="num">400, 404, 503, 504</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">POST /sync</td><td>Sincronização completa com merge por slot</td><td class="num">503, 504</td><td><span class="pill done">Pronta</span></td></tr>
+          <tr><td class="key">GET /access-log</td><td>Últimos acessos, do mais novo ao mais antigo (<code>?limit=</code>)</td><td class="num">400</td><td><span class="pill done">Pronta</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="dados">
+    <div class="section-head">
+      <h2>Modelo de dados</h2>
+      <p>SQLite em modo WAL. A réplica pode ser reconstruída por um sync; o contador do HMAC não pode. Por isso o esquema evolui por migrações numeradas (<code>PRAGMA user_version</code>), sem nunca recriar o banco.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Tabela</th><th>Colunas</th><th>Observação</th></tr></thead>
+        <tbody>
+          <tr><td class="key">users</td><td class="mono">id, name, has_totp, has_rfid, created_at, synced_at</td><td>Slot 0–9 como chave. Sem segredo TOTP. O nome é dado do Pi.</td></tr>
+          <tr><td class="key">lock_status</td><td class="mono">locked, updated_at</td><td>Linha única. Começa travada (RNF4).</td></tr>
+          <tr><td class="key">access_log</td><td class="mono">id, slot, user_name, method, result, received_at</td><td>Guarda os últimos 500 eventos. <code>user_name</code> é o nome do slot no momento do evento. <code>method</code>: totp, rfid ou remote.</td></tr>
+          <tr><td class="key">link_state</td><td class="mono">hmac_counter</td><td>Linha única. O contador nunca se repete, nem depois de reiniciar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="protocolo">
+    <div class="section-head">
+      <h2>Protocolo ZigBee proposto</h2>
+      <p>Proposta para validar com o time do firmware. O HMAC é SHA-256 truncado em 16 bytes, calculado sobre comando, slot, dados e contador.</p>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Cluster</th><th>Direção</th><th>Conteúdo</th></tr></thead>
+        <tbody>
+          <tr><td class="key">0x0101 Door Lock</td><td>Pi → fechadura</td><td><code>unlockDoor</code>, com contador e HMAC no campo de código</td></tr>
+          <tr><td class="key">0x0101 Door Lock</td><td>fechadura → Pi</td><td>Atributo <code>lockState</code>, reportado a cada mudança</td></tr>
+          <tr><td class="key">0x000A Time</td><td>fechadura lê do Pi</td><td>Segundos desde 01/01/2000 UTC, no boot e uma vez por dia</td></tr>
+          <tr><td class="key">0xFC00 próprio</td><td>Pi → fechadura</td><td><code>listSlots</code>: resposta de 10 bytes (bit 0 ocupado, bit 1 TOTP, bit 2 RFID)</td></tr>
+          <tr><td class="key">0xFC00 próprio</td><td>Pi → fechadura</td><td><code>setUser(slot, segredo de 20 B, contador, HMAC)</code>, cerca de 41 bytes</td></tr>
+          <tr><td class="key">0xFC00 próprio</td><td>Pi → fechadura</td><td><code>clearUser(slot, contador, HMAC)</code></td></tr>
+          <tr><td class="key">0xFC00 próprio</td><td>fechadura → Pi</td><td><code>accessEvent(slot, método, resultado)</code>, só para teclado e RFID</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout">
+      <h3>Para combinar com o time do firmware</h3>
+      <ul>
+        <li>Formato do cluster <code>0xFC00</code> e código de fabricante</li>
+        <li>Intervalos de poll normal e rápido</li>
+        <li>Digitação <code>&lt;slot&gt;&lt;código&gt;#</code> e janela de ±30 s</li>
+        <li>Recusar saltos de hora; cristal externo de 32 kHz; pedir a hora no boot e uma vez por dia</li>
+        <li>Chave do HMAC definida no pareamento e contador persistido nos dois lados</li>
+        <li>A fechadura não reporta destravamentos remotos (o Pi já registra)</li>
+        <li>Um firmware mínimo para o spike da Fase 4</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="riscos">
+    <div class="section-head">
+      <h2>Riscos</h2>
+    </div>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>Risco</th><th>Impacto</th><th>Mitigação</th></tr></thead>
+        <tbody>
+          <tr><td>Integração ZigBee atrasar ou não funcionar</td><td><span class="impact high">Alto</span></td><td>Spike cedo; o stub mantém a web e os testes andando</td></tr>
+          <tr><td>Destravamento lento por causa do sono da fechadura</td><td><span class="impact mid">Médio</span></td><td>Poll de até 5 s, timeout de 15 s e mensagem de espera na tela</td></tr>
+          <tr><td>Herdsman responder pedidos de hora sozinho</td><td><span class="impact mid">Médio</span></td><td>Verificar no spike; plano B é enviar a hora pelo <code>0xFC00</code></td></tr>
+          <tr><td>Banco do Pi perdido zera o contador do HMAC</td><td><span class="impact mid">Médio</span></td><td>Combinar com o firmware um re-pareamento ou ressincronização do contador</td></tr>
+          <tr><td><code>better-sqlite3</code> não compilar no Pi</td><td><span class="impact low">Baixo</span></td><td><code>build-essential</code> e <code>python3</code>; testar logo na Fase 3</td></tr>
+          <tr><td>Cartão SD corromper em queda de energia</td><td><span class="impact low">Baixo</span></td><td>A réplica é descartável e o sync reconstrói os dados</td></tr>
+          <tr><td><code>apps/zigbee</code> sem forma definida de rodar em produção</td><td><span class="impact mid">Médio</span></td><td>Decidir na Fase 3 entre rodar com <code>tsx</code> ou empacotar o código</td></tr>
+          <tr><td><code>iron-session</code> 9 exige Node 22.13+</td><td><span class="impact low">Baixo</span></td><td>Instalar Node 22 LTS no Pi na Fase 3 (<code>engines</code> do projeto já atualizado)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    Escopo: <code>raspberry_pi/smart-entry</code>. Monorepo com Turborepo e pnpm; pacotes <code>apps/web</code>, <code>apps/zigbee</code>, <code>packages/db</code>, <code>packages/shared</code> e <code>packages/ui</code>.
+  </footer>
+</div>
+</body>
+</html>

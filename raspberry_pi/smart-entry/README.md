@@ -1,4 +1,8 @@
-# shadcn/ui monorepo template
+# SmartEntry · módulo Raspberry Pi
+
+Interface web e ponte ZigBee da fechadura SmartEntry. O plano de desenvolvimento, a arquitetura e as decisões do projeto estão em [docs/plano-desenvolvimento.md](docs/plano-desenvolvimento.md), incluindo como rodar o projeto em desenvolvimento.
+
+## shadcn/ui
 
 This is a Next.js monorepo template with shadcn/ui.
 
