@@ -11,6 +11,6 @@ char check_kbd();
 
 void vKeyboardTask(void *pvParameters);
 
-extern QueueHandle_t xKeyboardQueue;
+void readKeyboardQueue();
 
 #endif

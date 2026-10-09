@@ -18,6 +18,21 @@ const char KBD_ARR[] = {'1', '4', '7', '*', '2', '5', '8', '0',
 
 QueueHandle_t xKeyboardQueue;
 
+void readKeyboardQueue() {
+    char lKeyboardReceived;
+    BaseType_t xKeyboardQueueStatus;
+    const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
+
+    xKeyboardQueueStatus =
+        xQueueReceive(xKeyboardQueue, &lKeyboardReceived, xTicksToWait);
+
+    if (xKeyboardQueueStatus == pdPASS) {
+        printf("Queue Read: %c\n", lKeyboardReceived);
+    } else {
+        printf("Empty Queue\n");
+    }
+}
+
 void initialize_kbd_gpios(void) {
     for (int r = 0; r < KBD_ROWS; r++) {
         gpio_set_direction(ROW_PINS[r], GPIO_MODE_INPUT);
@@ -56,6 +71,8 @@ void writeToQueue(char value) {
 
 void vKeyboardTask(void *pvParameters) {
     printf("\033[32mStarting keyboard task\033[0m\n");
+    xKeyboardQueue = xQueueCreate(10, sizeof(char));
+    printf("\033[32mKeyboard Initialized\033[0m\n");
     fflush(stdout);
     initialize_kbd_gpios();
 

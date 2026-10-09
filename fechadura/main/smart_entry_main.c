@@ -18,21 +18,6 @@
 
 #include "keyboard.h"
 
-void readKeyboardQueue() {
-    char lKeyboardReceived;
-    BaseType_t xKeyboardQueueStatus;
-    const TickType_t xTicksToWait = pdMS_TO_TICKS(100);
-
-    xKeyboardQueueStatus =
-        xQueueReceive(xKeyboardQueue, &lKeyboardReceived, xTicksToWait);
-
-    if (xKeyboardQueueStatus == pdPASS) {
-        printf("Queue Read: %c\n", lKeyboardReceived);
-    } else {
-        printf("Empty Queue\n");
-    }
-}
-
 void app_main(void) {
     printf("Hello world - GPIOD!\n");
 
@@ -63,8 +48,6 @@ void app_main(void) {
 
     printf("Minimum free heap size: %" PRIu32 " bytes\n",
            esp_get_minimum_free_heap_size());
-
-    xKeyboardQueue = xQueueCreate(10, sizeof(char));
 
     TaskHandle_t xKeyboardHandle = NULL;
     BaseType_t xKeyboardReturned;
