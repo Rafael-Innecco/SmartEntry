@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: LicenseRef-Included
  *
- * Zigbee Customized Data Consumer Example
+ * Zigbee Customized Data Producer Example
  *
  * This example code is in the Public Domain (or CC0 licensed, at your option.)
  *
@@ -17,20 +17,19 @@
 #define ESP_ZIGBEE_PRIMARY_CHANNEL_MASK   (1U << CONFIG_ZB_EXAMPLE_PRIMARY_CHANNEL)
 #define ESP_ZIGBEE_SECONDARY_CHANNEL_MASK CONFIG_ZB_EXAMPLE_SECONDARY_CHANNEL_MASK
 
-#define ESP_ZIGBEE_DATA_CONSUMER_EP_ID (1)
+#define ESP_ZIGBEE_CUSTOMIZED_DATA_PRODUCER_EP_ID (1)
 
 #define ESP_ZIGBEE_STORAGE_PARTITION_NAME "nvs"
-
 #define ESP_MANUFACTURER_NAME "\x09""ESPRESSIF"
-#define ESP_MODEL_IDENTIFIER "\x07"CONFIG_IDF_TARGET
+#define ESP_MODEL_IDENTIFIER "\x07" CONFIG_IDF_TARGET
 
-#define ESP_ZIGBEE_ZR_CONFIG()                      \
-    {                                               \
-        .device_type = EZB_NWK_DEVICE_TYPE_ROUTER,  \
-        .install_code_policy = false,               \
-        .zczr_config = {                            \
-            .max_children = 10,                     \
-        },                                          \
+#define ESP_ZIGBEE_ZC_CONFIG()                          \
+    {                                                   \
+        .device_type = EZB_NWK_DEVICE_TYPE_COORDINATOR, \
+        .install_code_policy = false,                   \
+        .zczr_config = {                                \
+            .max_children = 10,                         \
+        },                                              \
     }
 
 #if CONFIG_SOC_IEEE802154_SUPPORTED
@@ -47,6 +46,6 @@
 
 #define ESP_ZIGBEE_DEFAULT_CONFIG()                      \
     {                                                    \
-        .device_config = ESP_ZIGBEE_ZR_CONFIG(),         \
+        .device_config = ESP_ZIGBEE_ZC_CONFIG(),         \
         .platform_config = ESP_ZIGBEE_PLATFORM_CONFIG(), \
     };
