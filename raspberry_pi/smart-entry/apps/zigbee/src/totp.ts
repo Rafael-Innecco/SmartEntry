@@ -21,9 +21,9 @@ export function base32Encode(bytes: Uint8Array): string {
   return output
 }
 
-/** 160 bits, the size RFC 4226 recommends for HMAC-SHA1. */
+/** 256 bits, matching the ESP32-H2 firmware's TOTP_KEYLEN. */
 export function generateTotpSecret(): Buffer {
-  return randomBytes(20)
+  return randomBytes(32)
 }
 
 /** Parameters must match what the lock computes: SHA1, 6 digits, 30 s period. */

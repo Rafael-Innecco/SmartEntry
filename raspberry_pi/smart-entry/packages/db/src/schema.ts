@@ -36,4 +36,9 @@ CREATE TABLE IF NOT EXISTS link_state (
 export const MIGRATIONS: readonly string[] = [
   BASE_SCHEMA,
   "ALTER TABLE access_log ADD COLUMN user_name TEXT",
+  `CREATE TABLE lock_recovery (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    sync_required INTEGER NOT NULL CHECK (sync_required IN (0, 1))
+  );
+  INSERT INTO lock_recovery (id, sync_required) VALUES (1, 0);`,
 ]

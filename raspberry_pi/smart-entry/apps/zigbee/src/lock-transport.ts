@@ -2,12 +2,16 @@ import type { AccessEvent, LockSlot, LockStatus } from "@workspace/shared"
 
 /**
  * Everything apps/zigbee needs from the ZigBee link to the lock, shaped after
- * the agreed protocol: Door Lock cluster for unlock/status, a custom cluster
- * for slot management and access events. Implementations reject with
- * LockUnreachableError when the lock can't be reached; timeouts are applied
- * by the caller.
+ * the proposed authenticated v1 custom cluster for commands/status/events.
+ * Implementations reject with LockUnreachableError before an unavailable link
+ * is used. The real transport also applies its own confirmation timeout;
+ * callers may impose a shorter HTTP timeout.
  */
 export interface LockTransport {
+  /** Real transport persists uncertainty across restarts until replica sync. */
+  requiresSync?(): boolean
+  /** Called only after the service has committed the confirmed replica change. */
+  confirmReplica?(): void
   isConnected(): boolean
   /** Occupied slots only, with the credentials the lock has for each. */
   listSlots(): Promise<LockSlot[]>

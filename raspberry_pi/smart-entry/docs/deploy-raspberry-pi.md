@@ -1,6 +1,6 @@
 # Deploy no Raspberry Pi
 
-Este roteiro instala a web e a ponte com **fechadura simulada**. O transporte ZigBee real ainda não está implementado. Os arquivos em `deploy/` foram usados na primeira instalação em Debian 13 arm64, no Raspberry Pi 3B+.
+Este roteiro instala a web e a ponte com **fechadura simulada**. O transporte ZigBee real está implementado no lado Pi conforme a [proposta v1](protocolo-zigbee-v1.md), com testes simulados; sua ativação depende de firmware compatível e validação física. Os arquivos em `deploy/` foram usados na primeira instalação em Debian 13 arm64, no Raspberry Pi 3B+.
 
 ## Primeira instalação · 9 de outubro de 2026
 
@@ -13,6 +13,8 @@ Este roteiro instala a web e a ponte com **fechadura simulada**. O transporte Zi
 - Reboot real executado: novo boot confirmado e web, ponte e Caddy voltaram automaticamente, com health respondendo.
 
 Testes de atualização, queda de energia e integração ZigBee real continuam pendentes.
+
+Em 23/10/2026, uma inspeção SSH confirmou o ANT-DONGLE enumerado como CP2102N, a serial persistente e as permissões de `smart-entry`. Após reinício, a resposta de versão confirmou TI ZNP 2.7.1 revisão 20240710, driver `zstack`, 115200 baud sem RTS/CTS. O Pi estava acessível apenas por IPv6 local e com relógio sem sincronização NTP; os logs mostraram falhas repetidas de DHCP na Ethernet, apesar do link físico ativo. O journal é volátil e não preservou o boot anterior. Não houve atualização do deploy nem alteração de rede. Evidências e pendências estão em [zigbee-coordenador.md](zigbee-coordenador.md#inspeção-por-ssh-em-23102026).
 
 Uma [captura do painel no navegador](captura_de_tela.PNG) registra o primeiro acesso no computador. O aviso de certificado visível nessa captura indica que o navegador ainda não confiava na autoridade local do Caddy; instalar o certificado público raiz no dispositivo resolve essa etapa de confiança. A captura não substitui a validação completa do cadastro, QR e layout no celular.
 

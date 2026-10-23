@@ -1,0 +1,7 @@
+{
+  "description": "Fixed test key only. Independently computed using Python hmac/hashlib/struct.",
+  "keyHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "lockIeee": "0x00124b0000000001",
+  "wireHex": "0100020304030201a0a1a2a3a4a5a6a708d2496b20202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3fee9f1c3bf6230f3faa327b61055d0a21",
+  "tagHex": "ee9f1c3bf6230f3faa327b61055d0a21"
+}

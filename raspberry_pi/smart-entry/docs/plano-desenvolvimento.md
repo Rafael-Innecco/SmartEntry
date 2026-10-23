@@ -4,7 +4,7 @@ PCS3848 · Sistemas Embarcados · Poli-USP
 
 Este plano cobre o lado Raspberry Pi da fechadura SmartEntry: a interface web, a ponte ZigBee e a réplica local de usuários (`raspberry_pi/smart-entry`). A fechadura (ESP32-H2, pasta `fechadura/`) é desenvolvida por outro time e aparece aqui como a interface que precisamos combinar.
 
-Atualizado em 9 de outubro de 2026. A instalação e as evidências de validação estão em [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md).
+Atualizado em 23 de outubro de 2026. A instalação e as evidências de validação estão em [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md). A base do coordenador e os gaps do protocolo estão em [`zigbee-coordenador.md`](zigbee-coordenador.md).
 
 ## Situação
 
@@ -14,18 +14,18 @@ Atualizado em 9 de outubro de 2026. A instalação e as evidências de validaç�
 | 1 | Testes automatizados | Concluída |
 | 2 | Interface web (`apps/web`) | Implementada, falta validar no navegador |
 | 3 | Deploy no Raspberry Pi | Instalado e validado com simulador; atualização e queda de energia pendentes |
-| 4 | ZigBee real | Aguarda o firmware |
+| 4 | ZigBee real | Lado Pi implementado para proposta v1; firmware e validação física pendentes |
 | 5 | Revisão de segurança | HTTPS, cookies e loopback verificados; ZigBee pendente |
 | 6 | Integração e validação | Planejada |
 | 7 | RFID | Opcional |
 
-50 testes automatizados passando (14 em `apps/web`, 13 em `packages/db`, 23 em `apps/zigbee`). As 10 decisões estão documentadas; as propostas marcadas como firmware ainda precisam de confirmação do outro time.
+Na validação anterior, 50 testes automatizados passaram (14 em `apps/web`, 13 em `packages/db`, 23 em `apps/zigbee`). Em 23/10, o transporte v1 passou em 61 testes locais (45 em `apps/zigbee`, 16 em `packages/db`), typecheck e lint; a suíte web não foi reexecutada. As 10 decisões estão documentadas; as propostas marcadas como firmware ainda precisam de confirmação do outro time.
 
 ### Próximos passos imediatos
 
 1. Validar a interface no navegador e no celular (Fase 2), incluindo avisos de erro, QR e largura pequena.
 2. Validar atualização e recuperação após queda de energia conforme [`deploy-raspberry-pi.md`](deploy-raspberry-pi.md). Instalação com simulador, HTTPS, portas e reboot já verificados no Pi (Fase 3).
-3. Confirmar o protocolo com o time do firmware e obter o dongle/firmware mínimo para o spike (Fase 4). O firmware deste checkout ainda usa senha fixa `1234` no fluxo principal.
+3. Confirmar o protocolo com o time do firmware e validar o NovaDigital ANT-DONGLE com as ferramentas de bancada (Fase 4). O firmware deste checkout já valida TOTP com chave fixa de 32 bytes e inicia `vCommTask` no fluxo principal (`8e81312`), mas ainda precisa assumir papel de dispositivo final e implementar o contrato v1; o Pi será coordenador.
 
 Já implementados: bloqueio de operações concorrentes, recuperação por sync após timeout de cadastro/remoção, tratamento de respostas inválidas da API, execução de produção com `tsx`, unidades systemd, Caddyfile e modelos de ambiente em `deploy/`. O deploy com simulador foi validado no Pi 3B+ (Debian 13 arm64) em 9 de outubro de 2026, incluindo login HTTPS e reboot. Build no Pi usa `build:pi` com Webpack e `SMART_ENTRY_LOW_MEMORY_BUILD=1`; Turbopack excedeu a memória disponível. Integração real, atualização e resistência a quedas de energia continuam pendentes.
 
@@ -44,10 +44,10 @@ flowchart TB
     stub["Stub da fechadura<br/>(desenvolvimento)"]
     transport["Transporte ZigBee<br/>Fase 4"]
     db[("SQLite · WAL<br/>users · lock_status<br/>access_log · link_state")]
-    dongle["ZBDongle-P · CC2652P<br/>zigbee-herdsman · Fase 4"]
+    dongle["NovaDigital ANT-DONGLE<br/>zigbee-herdsman · Fase 4"]
   end
 
-  lock["Fechadura ESP32-H2<br/>sleepy end device · poll 3–5 s<br/>clusters 0x0101 · 0x000A · 0xFC00"]
+  lock["Fechadura ESP32-H2<br/>sleepy end device · poll 3–5 s<br/>clusters 0x000A · 0xFC00"]
 
   browser -- "HTTPS :443" --> caddy
   caddy -- "HTTP 127.0.0.1:3000" --> web
@@ -70,11 +70,11 @@ Legenda: verde = implementado · cinza tracejado = planejado · roxo pontilhado 
 
 ### Fluxos principais
 
-- **Destravar:** a web chama `POST /unlock`, o `apps/zigbee` envia `unlockDoor` com HMAC e espera a confirmação. Sem resposta em 15 s, devolve 504. Sucesso ou falha vão para o log como `remote`.
+- **Destravar:** a web chama `POST /unlock`, o `apps/zigbee` envia `unlock` pelo protocolo v1 com HMAC e espera a confirmação. Sem resposta em 15 s, devolve 504. Sucesso ou falha vão para o log como `remote`.
 - **Cadastrar:** o Pi gera o segredo TOTP, envia com `setUser` e só grava o usuário depois da confirmação, sem o segredo. A web mostra o QR code uma única vez.
 - **Sincronizar:** no boot e pelo botão. `listSlots` devolve 10 bytes, o Pi faz merge por slot (mantém os nomes) e grava `synced_at`.
 - **Status:** a fechadura reporta `lockState` quando muda. A web consulta `/status` a cada 3 s.
-- **Hora:** a fechadura lê a hora do Pi no boot e uma vez por dia. O Pi só responde se o relógio foi sincronizado por NTP.
+- **Hora:** a fechadura lê a hora do Pi no boot e periodicamente para manter a precisão do protocolo v1. O Pi só informa hora válida com NTP confirmado.
 
 ## Fases
 
@@ -86,7 +86,7 @@ Pronto quando todas as rotas funcionam contra o stub, inclusive os casos de erro
 - [x] Erros tipados e stub configurável (atraso ou fechadura inacessível)
 - [x] Sync com merge por slot, mantendo os nomes e gravando `synced_at`
 - [x] Sync automático na inicialização, sem travar o servidor
-- [x] Segredo TOTP de 20 bytes e URI `otpauth://`
+- [x] Segredo TOTP de 32 bytes e URI `otpauth://`
 - [x] Tabelas `access_log` e `link_state`; slot limitado a 0–9 no banco
 - [x] Rotas `PATCH`, `DELETE /users/:id`, `/health`, `/access-log` e erros 409, 503, 504
 
@@ -133,16 +133,18 @@ Pronto quando o painel abre via HTTPS no Pi e volta sozinho depois de um reiníc
 - [x] Reboot real: web, ponte e Caddy retornaram automaticamente
 - [ ] Executar atualização e teste de tirar o Pi da tomada; registrar evidências
 
-### Fase 4 · ZigBee real · Aguarda o firmware
+### Fase 4 · ZigBee real · Lado Pi implementado para proposta v1
 
 Pronto quando todas as rotas funcionam com a fechadura real. Depende do dongle em mãos e do protocolo combinado.
 
-- [ ] Spike: `zigbee-herdsman` + ZBDongle-P pareando um ESP32-H2 de teste
+- [x] Base de bancada com `zigbee-herdsman`: identidade persistente, diagnóstico, pareamento restrito e probe Basic; validação física pendente
+- [ ] Spike: NovaDigital ANT-DONGLE pareando um ESP32-H2 de teste como dispositivo final; Pi coordenador
 - [ ] Chave de rede aleatória; pareamento só por script
-- [ ] `ZigbeeLockTransport` com a mesma interface do stub
-- [ ] HMAC com o contador persistido em `link_state`
-- [ ] Time-guard: hora só com NTP sincronizado; checar se o herdsman responde pedidos de hora sozinho
-- [ ] Timeouts ajustados ao poll; implementar a opção real de `SMART_ENTRY_TRANSPORT` (hoje só `fake` é aceito; outros valores encerram o processo)
+- [x] `ZigbeeLockTransport` para a [proposta v1](protocolo-zigbee-v1.md), com testes simulados; firmware/hardware pendentes
+- [x] HMAC com contador uint32 persistido em `link_state`, sem wrap; WAL com synchronous FULL
+- [x] Time-guard no serviço e na CLI, interceptando respostas automáticas do herdsman
+- [x] Opt-in `SMART_ENTRY_TRANSPORT=zigbee` + `SMART_ENTRY_ZIGBEE_PROTOCOL=smart-entry-v1`; prazo de 8 s no envelope e timeout de 12 s no transporte
+- [x] Recuperação persistente de usuários, sessões/eventos autenticados, supervisão/reconexão e shutdown limitado; validação física pendente
 - [ ] Garantir que comandos não executem após o encerramento definitivo da promessa; limitar comandos pendentes e validar recuperação após reiniciar a ponte
 
 ### Fase 5 · Revisão de segurança · Parcial
@@ -179,12 +181,12 @@ As marcadas com "(firmware)" são propostas que o time do firmware precisa confi
 
 | # | Tema | Decisão |
 |---|---|---|
-| B1 | Protocolo ZigBee (firmware) | Híbrido: Door Lock `0x0101` e Time `0x000A` padrão, cluster próprio `0xFC00` para os slots. A fechadura não guarda nomes. |
-| B2 | Dongle | Sonoff ZBDongle-P (CC2652P, driver `zstack`), acessado por `/dev/serial/by-id`. |
+| B1 | Protocolo ZigBee (firmware) | Proposta v1: cluster próprio `0xFC00` para comandos e eventos, incluindo abertura; Time `0x000A`. Substitui a proposta de HMAC no PIN Door Lock. A fechadura não guarda nomes. |
+| B2 | Dongle | NovaDigital ANT-DONGLE, acessado por `/dev/serial/by-id`. Driver `zstack`, TI ZNP 2.7.1 revisão 20240710, 115200 baud sem RTS/CTS, confirmados por SSH. Modelo exato do rádio ainda não identificado. Pi como coordenador. |
 | B3 | Energia da fechadura (firmware) | Sleepy end device com poll de 3–5 s (abaixo do limite de 7,68 s) e poll rápido após atividade. Timeout de 15 s na web. |
 | B4 | Login do admin | Um admin, só senha, hash `scrypt` em `ADMIN_PASSWORD_HASH`, sessão com `iron-session` de 12 h, limite global de tentativas. |
 | B5 | Criptografia (RNF3) | Chave de rede aleatória, pareamento só no cadastro, HMAC + contador nos comandos, HTTPS via Caddy. |
-| B6 | Cadastro (firmware) | O Pi gera o segredo TOTP, envia à fechadura e mostra o QR uma vez. O segredo não fica guardado no Pi. |
+| B6 | Cadastro (firmware) | O Pi gera o segredo TOTP de 32 bytes, envia à fechadura e mostra o QR uma vez. O segredo não fica guardado no Pi. |
 | B7 | Log de acessos | Sim: últimos 500 eventos, com o nome do slot gravado no momento do evento. |
 | B8 | Autenticação (firmware) | Só TOTP por enquanto, digitado como `<slot><código>#`. RFID fica opcional para o fim. |
 | B9 | Status na web | Atualização a cada 3 s e logo depois de destravar. |
@@ -208,7 +210,7 @@ Escuta em `127.0.0.1:4000` e só a web chama. Toda escrita vai primeiro à fecha
 
 Códigos: 400 entrada inválida · 404 usuário ou rota inexistente · 409 conflito (slot ocupado, operação pendente ou sync necessário) · 503 fechadura inacessível · 504 fechadura não respondeu a tempo.
 
-Operações na fechadura são exclusivas: enquanto uma confirmação estiver pendente, outro comando, sync ou renomeação recebe 409 com `code: lock-busy`. As leituras continuam disponíveis. Um timeout de cadastro/remoção exige sync antes de novas alterações (`code: sync-required`); o bloqueio permanece até a operação original terminar. Sync recupera um cadastro tardio sem QR: remova esse slot e cadastre novamente. Destravamento continua permitido após o comando pendente terminar, mesmo com sync de usuários necessário. A proteção atual é por processo; recuperação após reinício e garantias de entrega precisarão de validação no transporte real.
+Operações na fechadura são exclusivas: enquanto uma confirmação estiver pendente, outro comando, sync ou renomeação recebe 409 com `code: lock-busy`. As leituras continuam disponíveis. Um timeout de cadastro/remoção exige sync antes de novas alterações (`code: sync-required`); o bloqueio permanece até a operação original terminar. Sync recupera um cadastro tardio sem QR: remova esse slot e cadastre novamente. Destravamento continua permitido após o comando pendente terminar, mesmo com sync de usuários necessário. No transporte real proposto, a necessidade de sync é persistida em `lock_recovery` e o contador de listSlots impede comandos anteriores de executar após o sync, desde que o ESP implemente o contrato. As garantias físicas ainda precisam de validação.
 
 ## Modelo de dados
 
@@ -219,31 +221,16 @@ SQLite em modo WAL. A réplica pode ser reconstruída por um sync; o contador do
 | `users` | `id, name, has_totp, has_rfid, created_at, synced_at` | Slot 0–9 como chave. Sem segredo TOTP. O nome é dado do Pi. |
 | `lock_status` | `locked, updated_at` | Linha única. Começa travada (RNF4). |
 | `access_log` | `id, slot, user_name, method, result, received_at` | Últimos 500 eventos. `user_name` é o nome do slot no momento do evento. `method`: `totp`, `rfid` ou `remote`. |
-| `link_state` | `hmac_counter` | Linha única. O contador nunca se repete, nem depois de reiniciar. |
+| `link_state` | `hmac_counter` | Linha única. Uint32 sem wrap; reservado antes de transmitir. |
+| `lock_recovery` | `sync_required` | Persiste necessidade de sincronização após escrita incerta/reinício. |
 
 ## Protocolo ZigBee proposto
 
-Proposta para validar com o time do firmware. O HMAC é SHA-256 truncado em 16 bytes, calculado sobre comando, slot, dados e contador.
+A [proposta SmartEntry v1](protocolo-zigbee-v1.md) é o contrato normativo implementado no Raspberry, com envelope binário, vetores de interoperabilidade, chave de aplicação de 32 bytes, HMAC-SHA256 truncado em 16 bytes, contador uint32, deadline e sessão de eventos. O time ESP ainda precisa adotá-la; o exemplo `0xFF00` atual é incompatível.
 
-| Cluster | Direção | Conteúdo |
-|---|---|---|
-| `0x0101` Door Lock | Pi → fechadura | `unlockDoor`, com contador e HMAC no campo de código |
-| `0x0101` Door Lock | fechadura → Pi | Atributo `lockState`, reportado a cada mudança |
-| `0x000A` Time | fechadura lê do Pi | Segundos desde 01/01/2000 UTC, no boot e uma vez por dia |
-| `0xFC00` próprio | Pi → fechadura | `listSlots`: resposta de 10 bytes (bit 0 ocupado, bit 1 TOTP, bit 2 RFID) |
-| `0xFC00` próprio | Pi → fechadura | `setUser(slot, segredo de 20 B, contador, HMAC)`, cerca de 41 bytes |
-| `0xFC00` próprio | Pi → fechadura | `clearUser(slot, contador, HMAC)` |
-| `0xFC00` próprio | fechadura → Pi | `accessEvent(slot, método, resultado)`, só para teclado e RFID |
+Todos os comandos e eventos usam `0xFC00` no endpoint 1, inclusive abertura. Time usa `0x000A`. A proposta anterior de Door Lock `0x0101` com HMAC no campo PIN foi substituída. Nenhum comando de abertura é enviado por esse cluster na implementação v1.
 
-### Para combinar com o time do firmware
-
-- Formato do cluster `0xFC00` e código de fabricante
-- Intervalos de poll normal e rápido
-- Digitação `<slot><código>#` e janela de ±30 s
-- Recusar saltos de hora; cristal externo de 32 kHz; pedir a hora no boot e uma vez por dia
-- Chave do HMAC definida no pareamento e contador persistido nos dois lados
-- A fechadura não reporta destravamentos remotos (o Pi já registra)
-- Um firmware mínimo para o spike da Fase 4
+Pendências conjuntas: provisionamento físico da chave, persistência/serialização dos comandos no ESP, rejeição de contador/deadline, confirmação de atuação e de flash, sincronização de hora com precisão medida, poll normal/rápido e recuperação presencial após perda/regressão do contador. Não ativar o transporte real com o firmware de exemplo.
 
 ## Riscos
 
@@ -251,7 +238,7 @@ Proposta para validar com o time do firmware. O HMAC é SHA-256 truncado em 16 b
 |---|---|---|
 | Integração ZigBee atrasar ou não funcionar | Alto | Spike cedo; o stub mantém a web e os testes andando |
 | Destravamento lento por causa do sono da fechadura | Médio | Poll de até 5 s, timeout de 15 s e mensagem de espera na tela |
-| Herdsman responder pedidos de hora sozinho | Médio | Verificar no spike; plano B é enviar a hora pelo `0xFC00` |
+| Herdsman responder pedidos de hora sozinho | Médio | Interceptação implementada com testes; confirmar no spike físico |
 | Banco do Pi perdido zera o contador do HMAC | Médio | Combinar com o firmware um re-pareamento ou ressincronização do contador |
 | Execução de produção ainda não validada em arm64 | Médio | `tsx` definido como runtime; instalar dependências e validar serviços no Pi na Fase 3 |
 | `better-sqlite3` não compilar no Pi | Baixo | `build-essential` e `python3`; testar logo na Fase 3 |

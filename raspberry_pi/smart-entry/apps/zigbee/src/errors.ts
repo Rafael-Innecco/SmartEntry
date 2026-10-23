@@ -12,6 +12,20 @@ export class LockTimeoutError extends Error {
   }
 }
 
+export class LockRejectedError extends Error {
+  constructor(public readonly code: number) {
+    super(`lock rejected command (code ${code})`)
+    this.name = "LockRejectedError"
+  }
+}
+
+export class ClockUnsyncedError extends Error {
+  constructor() {
+    super("trusted NTP time is unavailable")
+    this.name = "ClockUnsyncedError"
+  }
+}
+
 export class NotFoundError extends Error {
   constructor(message: string) {
     super(message)

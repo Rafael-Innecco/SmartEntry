@@ -53,7 +53,8 @@ export function createServices(
 
   function assertAvailable(requireSync = true): void {
     if (busy) throw new LockBusyError()
-    if (requireSync && syncRequired) throw new SyncRequiredError()
+    if (requireSync && (syncRequired || lock.requiresSync?.()))
+      throw new SyncRequiredError()
   }
 
   // Keep the gate until the underlying operation settles, even after HTTP 504.
@@ -120,7 +121,10 @@ export function createServices(
           syncedAt: confirmedAt,
         }
         // Do not save a credential whose QR was already lost to an HTTP timeout.
-        if (!syncRequired) upsertUser(db, user)
+        if (!syncRequired) {
+          upsertUser(db, user)
+          lock.confirmReplica?.()
+        }
         return { user, totpUri: buildOtpauthUri(name, secret) }
       }, true)
     },
@@ -136,7 +140,10 @@ export function createServices(
       return exclusive(async () => {
         if (!getUser(db, id)) throw new NotFoundError(`no user in slot ${id}`)
         await lock.clearUser(id)
-        if (!syncRequired) deleteUser(db, id)
+        if (!syncRequired) {
+          deleteUser(db, id)
+          lock.confirmReplica?.()
+        }
       }, true)
     },
 
@@ -146,6 +153,7 @@ export function createServices(
           const slots = await lock.listSlots()
           const syncedAt = now()
           mergeSlotsFromLock(db, slots, syncedAt)
+          lock.confirmReplica?.()
           syncRequired = false
           return { users: listUsers(db), syncedAt }
         },

@@ -23,6 +23,7 @@ export function createDb(path: string): SmartEntryDb {
   }
   const db = new Database(path)
   db.pragma("journal_mode = WAL")
+  db.pragma("synchronous = FULL")
   migrate(db)
   return db
 }

@@ -7,7 +7,7 @@ import Database from "better-sqlite3"
 import { ACCESS_LOG_MAX_ENTRIES, addAccessEvent, listAccessLog } from "./access-log.js"
 import { createDb, migrate, type SmartEntryDb } from "./client.js"
 import { MIGRATIONS } from "./schema.js"
-import { nextHmacCounter } from "./link-state.js"
+import { isLockSyncRequired, nextHmacCounter, setLockSyncRequired } from "./link-state.js"
 import { getLockStatus, setLockStatus } from "./lock-status.js"
 import {
   deleteUser,
@@ -165,6 +165,19 @@ describe("migrations", () => {
 })
 
 describe("link state", () => {
+  test("counter exhaustion never wraps or reuses a value", () => {
+    db.prepare("INSERT INTO link_state (id, hmac_counter) VALUES (1, 4294967294)").run()
+    assert.equal(nextHmacCounter(db), 4294967295)
+    assert.throws(() => nextHmacCounter(db), /exhausted/)
+    assert.throws(() => nextHmacCounter(db), /exhausted/)
+  })
+  test("recovery marker survives database migration and changes only explicitly", () => {
+    setLockSyncRequired(db, true)
+    migrate(db)
+    assert.equal(isLockSyncRequired(db), true)
+    setLockSyncRequired(db, false)
+    assert.equal(isLockSyncRequired(db), false)
+  })
   test("the HMAC counter starts at 1 and never repeats", () => {
     assert.deepEqual([nextHmacCounter(db), nextHmacCounter(db), nextHmacCounter(db)], [1, 2, 3])
   })

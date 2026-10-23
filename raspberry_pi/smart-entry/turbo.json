@@ -1,6 +1,15 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": [
+    "SMART_ENTRY_ZIGBEE_PROTOCOL",
+    "SMART_ENTRY_LOCK_HMAC_KEY_PATH",
+    "SMART_ENTRY_ZIGBEE_SERIAL_PATH",
+    "SMART_ENTRY_ZIGBEE_ADAPTER",
+    "SMART_ENTRY_ZIGBEE_BAUD_RATE",
+    "SMART_ENTRY_ZIGBEE_STATE_DIR",
+    "SMART_ENTRY_LOCK_IEEE"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

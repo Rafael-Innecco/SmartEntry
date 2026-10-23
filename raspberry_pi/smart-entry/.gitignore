@@ -50,3 +50,6 @@ next-env.d.ts
 *.sqlite3-journal
 *.sqlite3-wal
 *.sqlite3-shm
+
+# Coordinator network keys, database and backups
+apps/zigbee/data/

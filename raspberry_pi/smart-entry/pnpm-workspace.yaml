@@ -2,5 +2,6 @@ packages:
   - "apps/*"
   - "packages/*"
 allowBuilds:
+  '@serialport/bindings-cpp': true
   better-sqlite3: true
   esbuild: true

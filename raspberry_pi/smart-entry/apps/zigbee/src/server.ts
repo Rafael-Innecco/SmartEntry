@@ -1,4 +1,9 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http"
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http"
 
 import {
   ACCESS_LOG_MAX_ENTRIES,
@@ -7,10 +12,23 @@ import {
   listUsers,
   type SmartEntryDb,
 } from "@workspace/db"
-import { newUserSchema, renameUserRequestSchema, slotIdSchema } from "@workspace/shared"
+import {
+  newUserSchema,
+  renameUserRequestSchema,
+  slotIdSchema,
+} from "@workspace/shared"
 import { z } from "zod"
 
-import { ConflictError, LockBusyError, LockTimeoutError, LockUnreachableError, NotFoundError, SyncRequiredError } from "./errors.js"
+import {
+  ClockUnsyncedError,
+  ConflictError,
+  LockBusyError,
+  LockRejectedError,
+  LockTimeoutError,
+  LockUnreachableError,
+  NotFoundError,
+  SyncRequiredError,
+} from "./errors.js"
 import type { LockTransport } from "./lock-transport.js"
 import type { Services } from "./services.js"
 
@@ -33,20 +51,31 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 }
 
 function toErrorResponse(err: unknown): [number, object] {
-  if (err instanceof z.ZodError) return [400, { error: "invalid request", issues: err.issues }]
+  if (err instanceof z.ZodError)
+    return [400, { error: "invalid request", issues: err.issues }]
   if (err instanceof SyntaxError) return [400, { error: "invalid JSON body" }]
   if (err instanceof NotFoundError) return [404, { error: err.message }]
   if (err instanceof ConflictError) return [409, { error: err.message }]
-  if (err instanceof LockBusyError) return [409, { error: err.message, code: "lock-busy" }]
-  if (err instanceof SyncRequiredError) return [409, { error: err.message, code: "sync-required" }]
+  if (err instanceof LockBusyError)
+    return [409, { error: err.message, code: "lock-busy" }]
+  if (err instanceof SyncRequiredError)
+    return [409, { error: err.message, code: "sync-required" }]
   if (err instanceof LockUnreachableError) return [503, { error: err.message }]
   if (err instanceof LockTimeoutError) return [504, { error: err.message }]
+  if (err instanceof ClockUnsyncedError)
+    return [503, { error: err.message, code: "clock-unsynced" }]
+  if (err instanceof LockRejectedError)
+    return [502, { error: err.message, code: "lock-rejected" }]
   console.error(err)
   return [500, { error: "internal error" }]
 }
 
 /** The internal HTTP API on 127.0.0.1:4000. Payload shapes live in @workspace/shared. */
-export function createHttpServer(db: SmartEntryDb, lock: LockTransport, services: Services): Server {
+export function createHttpServer(
+  db: SmartEntryDb,
+  lock: LockTransport,
+  services: Services
+): Server {
   return createServer((req, res) => {
     route(db, lock, services, req, res).catch((err: unknown) => {
       const [status, body] = toErrorResponse(err)
@@ -104,7 +133,9 @@ async function route(
   }
 
   if (method === "GET" && pathname === "/access-log") {
-    const { limit } = accessLogQuerySchema.parse(Object.fromEntries(url.searchParams))
+    const { limit } = accessLogQuerySchema.parse(
+      Object.fromEntries(url.searchParams)
+    )
     return sendJson(res, 200, { entries: listAccessLog(db, limit) })
   }
 

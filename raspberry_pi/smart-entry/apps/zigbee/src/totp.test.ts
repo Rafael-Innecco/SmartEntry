@@ -18,9 +18,9 @@ test("base32Encode matches the RFC 4648 test vectors (unpadded)", () => {
   }
 })
 
-test("generateTotpSecret returns 20 random bytes", () => {
+test("generateTotpSecret returns 32 random bytes", () => {
   const a = generateTotpSecret()
-  assert.equal(a.length, 20)
+  assert.equal(a.length, 32)
   assert.notDeepEqual(a, generateTotpSecret())
 })
 

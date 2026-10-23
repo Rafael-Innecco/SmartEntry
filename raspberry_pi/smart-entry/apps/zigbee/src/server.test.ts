@@ -14,7 +14,11 @@ import {
 } from "@workspace/shared"
 
 import { createApp } from "./app.js"
-import { createFakeLockTransport, type FakeLockTransport } from "./fake-lock-transport.js"
+import { ClockUnsyncedError, LockRejectedError } from "./errors.js"
+import {
+  createFakeLockTransport,
+  type FakeLockTransport,
+} from "./fake-lock-transport.js"
 
 const LOCK_TIMEOUT_MS = 100
 
@@ -49,51 +53,97 @@ async function register(id: number, name: string) {
   return registerUserResponseSchema.parse(res.body)
 }
 
+test("real transport clock/rejection failures have explicit HTTP responses", async () => {
+  lock.unlock = async () => {
+    throw new ClockUnsyncedError()
+  }
+  assert.deepEqual(await call("POST", "/unlock"), {
+    status: 503,
+    body: { error: "trusted NTP time is unavailable", code: "clock-unsynced" },
+  })
+  lock.unlock = async () => {
+    throw new LockRejectedError(7)
+  }
+  assert.deepEqual(await call("POST", "/unlock"), {
+    status: 502,
+    body: { error: "lock rejected command (code 7)", code: "lock-rejected" },
+  })
+})
+
 describe("health and status", () => {
   test("health reports the lock connection", async () => {
-    assert.deepEqual(healthResponseSchema.parse((await call("GET", "/health")).body), {
-      ok: true,
-      lockConnected: true,
-    })
+    assert.deepEqual(
+      healthResponseSchema.parse((await call("GET", "/health")).body),
+      {
+        ok: true,
+        lockConnected: true,
+      }
+    )
     lock.configure({ unreachable: true })
-    assert.equal(healthResponseSchema.parse((await call("GET", "/health")).body).lockConnected, false)
+    assert.equal(
+      healthResponseSchema.parse((await call("GET", "/health")).body)
+        .lockConnected,
+      false
+    )
   })
 
   test("a fresh install starts locked (RNF4)", async () => {
-    assert.equal(statusResponseSchema.parse((await call("GET", "/status")).body).locked, true)
+    assert.equal(
+      statusResponseSchema.parse((await call("GET", "/status")).body).locked,
+      true
+    )
   })
 })
 
 describe("POST /users", () => {
   test("registers on the lock, then in the replica, and returns the TOTP URI once", async () => {
     const { user, totpUri } = await register(0, "Alice")
-    assert.match(totpUri, /^otpauth:\/\/totp\/SmartEntry%3AAlice\?secret=[A-Z2-7]{32}&/)
+    assert.match(
+      totpUri,
+      /^otpauth:\/\/totp\/SmartEntry%3AAlice\?secret=[A-Z2-7]{52}&/
+    )
     assert.equal(user.syncedAt, user.createdAt)
-    assert.deepEqual(await lock.listSlots(), [{ id: 0, hasTotp: true, hasRfid: false }])
-    const { users } = usersResponseSchema.parse((await call("GET", "/users")).body)
+    assert.deepEqual(await lock.listSlots(), [
+      { id: 0, hasTotp: true, hasRfid: false },
+    ])
+    const { users } = usersResponseSchema.parse(
+      (await call("GET", "/users")).body
+    )
     assert.deepEqual(users, [user])
     assert.equal(JSON.stringify(users).includes("secret"), false)
   })
 
   test("rejects an occupied slot with 409", async () => {
     await register(0, "Alice")
-    assert.equal((await call("POST", "/users", { id: 0, name: "Bob" })).status, 409)
+    assert.equal(
+      (await call("POST", "/users", { id: 0, name: "Bob" })).status,
+      409
+    )
   })
 
   test("rejects invalid input with 400", async () => {
-    assert.equal((await call("POST", "/users", { id: 10, name: "" })).status, 400)
+    assert.equal(
+      (await call("POST", "/users", { id: 10, name: "" })).status,
+      400
+    )
     assert.equal((await call("POST", "/users")).status, 400)
   })
 
   test("does not touch the replica when the lock is unreachable (503)", async () => {
     lock.configure({ unreachable: true })
-    assert.equal((await call("POST", "/users", { id: 0, name: "Alice" })).status, 503)
+    assert.equal(
+      (await call("POST", "/users", { id: 0, name: "Alice" })).status,
+      503
+    )
     assert.deepEqual(listUsers(db), [])
   })
 
   test("returns 504 when the lock does not answer in time", async () => {
     lock.configure({ delayMs: LOCK_TIMEOUT_MS * 3 })
-    assert.equal((await call("POST", "/users", { id: 0, name: "Alice" })).status, 504)
+    assert.equal(
+      (await call("POST", "/users", { id: 0, name: "Alice" })).status,
+      504
+    )
     assert.deepEqual(listUsers(db), [])
   })
 })
@@ -104,7 +154,10 @@ describe("PATCH and DELETE /users/:id", () => {
     lock.configure({ unreachable: true })
     const res = await call("PATCH", "/users/0", { name: "Alice Souza" })
     assert.equal(res.status, 200)
-    assert.equal(renameUserResponseSchema.parse(res.body).user.name, "Alice Souza")
+    assert.equal(
+      renameUserResponseSchema.parse(res.body).user.name,
+      "Alice Souza"
+    )
   })
 
   test("removes from the lock, then from the replica", async () => {
@@ -131,8 +184,13 @@ describe("PATCH and DELETE /users/:id", () => {
 describe("POST /unlock", () => {
   test("unlocks, updates the status and logs a remote success", async () => {
     assert.equal((await call("POST", "/unlock")).status, 200)
-    assert.equal(statusResponseSchema.parse((await call("GET", "/status")).body).locked, false)
-    const [entry] = accessLogResponseSchema.parse((await call("GET", "/access-log")).body).entries
+    assert.equal(
+      statusResponseSchema.parse((await call("GET", "/status")).body).locked,
+      false
+    )
+    const [entry] = accessLogResponseSchema.parse(
+      (await call("GET", "/access-log")).body
+    ).entries
     assert.equal(entry?.method, "remote")
     assert.equal(entry?.result, "success")
   })
@@ -140,8 +198,13 @@ describe("POST /unlock", () => {
   test("logs a remote failure and returns 503 when the lock is unreachable", async () => {
     lock.configure({ unreachable: true })
     assert.equal((await call("POST", "/unlock")).status, 503)
-    assert.equal(statusResponseSchema.parse((await call("GET", "/status")).body).locked, true)
-    const [entry] = accessLogResponseSchema.parse((await call("GET", "/access-log")).body).entries
+    assert.equal(
+      statusResponseSchema.parse((await call("GET", "/status")).body).locked,
+      true
+    )
+    const [entry] = accessLogResponseSchema.parse(
+      (await call("GET", "/access-log")).body
+    ).entries
     assert.equal(entry?.result, "failure")
   })
 })
@@ -151,7 +214,7 @@ describe("POST /sync", () => {
     await register(0, "Alice")
     await register(1, "Bob")
     await lock.clearUser(1)
-    await lock.setUser(3, Buffer.alloc(20))
+    await lock.setUser(3, Buffer.alloc(32))
 
     const res = await call("POST", "/sync")
     assert.equal(res.status, 200)
@@ -178,12 +241,16 @@ describe("GET /access-log", () => {
   test("records events pushed by the lock, newest first, honoring limit", async () => {
     lock.emitAccessEvent({ slot: 0, method: "totp", result: "failure" })
     lock.emitAccessEvent({ slot: 0, method: "totp", result: "success" })
-    const all = accessLogResponseSchema.parse((await call("GET", "/access-log")).body).entries
+    const all = accessLogResponseSchema.parse(
+      (await call("GET", "/access-log")).body
+    ).entries
     assert.deepEqual(
       all.map((e) => e.result),
       ["success", "failure"]
     )
-    const one = accessLogResponseSchema.parse((await call("GET", "/access-log?limit=1")).body)
+    const one = accessLogResponseSchema.parse(
+      (await call("GET", "/access-log?limit=1")).body
+    )
     assert.equal(one.entries.length, 1)
     assert.equal((await call("GET", "/access-log?limit=0")).status, 400)
   })
