@@ -23,6 +23,9 @@
 #define ESP_MANUFACTURER_NAME "\x09""ESPRESSIF"
 #define ESP_MODEL_IDENTIFIER "\x07" CONFIG_IDF_TARGET
 
+#define CONFIG_ZB_EXAMPLE_SECONDARY_CHANNEL_MASK 0x07FFF800
+#define CONFIG_ZB_EXAMPLE_PRIMARY_CHANNEL 13
+
 #define ESP_ZIGBEE_ZC_CONFIG()                          \
     {                                                   \
         .device_type = EZB_NWK_DEVICE_TYPE_COORDINATOR, \
@@ -49,3 +52,6 @@
         .device_config = ESP_ZIGBEE_ZC_CONFIG(),         \
         .platform_config = ESP_ZIGBEE_PLATFORM_CONFIG(), \
     };
+
+
+void  vCommTask(void *pvParameters);

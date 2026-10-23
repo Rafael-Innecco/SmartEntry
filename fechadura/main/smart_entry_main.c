@@ -11,6 +11,7 @@
 #include "freertos/idf_additions.h"
 #include "freertos/projdefs.h"
 #include "freertos/task.h"
+#include "nvs_flash.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
 
@@ -22,6 +23,7 @@
 #include "lock.h"
 #include "password.h"
 #include "totp/totp.h"
+#include "zigbee/data_producer.h"
 
 void app_main(void) {
     printf("Hello world - GPIOD!\n");
@@ -46,6 +48,8 @@ void app_main(void) {
         printf("Get flash size failed");
         return;
     }
+
+    ESP_ERROR_CHECK(nvs_flash_init());
 
     printf("%" PRIu32 "MB %s flash\n", flash_size / (uint32_t)(1024 * 1024),
            (chip_info.features & CHIP_FEATURE_EMB_FLASH) ? "embedded"
@@ -73,8 +77,12 @@ void app_main(void) {
 
     TaskHandle_t xLockHandle = NULL;
     BaseType_t xLockReturned;
-    xLockReturned = xTaskCreate(vLockTask, "LOCK", 1000,
-                                   (void *)NULL, 2, &xLockHandle);
+    xLockReturned =
+        xTaskCreate(vLockTask, "LOCK", 1000, (void *)NULL, 2, &xLockHandle);
+
+    TaskHandle_t xCommHandle = NULL;
+    BaseType_t xCommReturned;
+    xCommReturned = xTaskCreate(vCommTask, "Comm", 4096, NULL, 5, NULL);
 
     uint8_t pass[TOTP_CODELEN];
     int i = 0;
