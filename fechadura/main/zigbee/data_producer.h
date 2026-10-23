@@ -28,7 +28,7 @@
 
 #define ESP_ZIGBEE_ZC_CONFIG()                          \
     {                                                   \
-        .device_type = EZB_NWK_DEVICE_TYPE_COORDINATOR, \
+        .device_type = EZB_NWK_DEVICE_TYPE_END_DEVICE, \
         .install_code_policy = false,                   \
         .zczr_config = {                                \
             .max_children = 10,                         \

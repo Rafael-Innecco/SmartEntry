@@ -1,21 +1,21 @@
-#include <time.h>
-#include <string.h>
 #include <stdint.h>
+#include <string.h>
+#include <time.h>
 
+#include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "esp_log.h"
 
+#include "db.h"
 #include "password.h"
 #include "totp/totp.h"
-#include "db.h"
 
 #define TAG "totp"
 
-int checkCode(uint8_t* c) {
+int checkCode(uint8_t *c) {
     uint64_t now = time(NULL);
     uint8_t code[TOTP_CODELEN];
-    
+
     UserIterator iter;
     initUserIter(&iter);
 
@@ -40,7 +40,7 @@ int checkCode(uint8_t* c) {
 }
 
 // dummy task to print the TOTP code
-void vDebugCodeTask(void*) {
+void vDebugCodeTask(void *) {
     uint8_t code[TOTP_CODELEN];
     DbUser user;
     char code_str[TOTP_CODELEN + 1];
@@ -55,7 +55,7 @@ void vDebugCodeTask(void*) {
         while (nextUser(&iter) == ESP_OK) {
             ESP_ERROR_CHECK(loadUser(iter.id, &user));
             compute_totp(user.key, now, code);
-    
+
             for (int i = 0; i < TOTP_CODELEN; i++) {
                 code_str[i] = code[i] + '0';
             }
