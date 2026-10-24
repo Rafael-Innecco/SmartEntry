@@ -1164,6 +1164,21 @@ CONFIG_GDMA_OBJ_DRAM_SAFE=y
 # end of ESP-Driver:LEDC Configurations
 
 #
+# ESP-Driver:MCPWM Configurations
+#
+# default:
+CONFIG_MCPWM_ISR_HANDLER_IN_IRAM=y
+# default:
+# CONFIG_MCPWM_ISR_CACHE_SAFE is not set
+# default:
+# CONFIG_MCPWM_CTRL_FUNC_IN_IRAM is not set
+# default:
+CONFIG_MCPWM_OBJ_CACHE_SAFE=y
+# default:
+# CONFIG_MCPWM_ENABLE_DEBUG_LOG is not set
+# end of ESP-Driver:MCPWM Configurations
+
+#
 # ESP-Driver:SPI Configurations
 #
 # default:
@@ -3186,6 +3201,7 @@ CONFIG_STACK_CHECK_NONE=y
 # CONFIG_WARN_WRITE_STRINGS is not set
 # CONFIG_EXTERNAL_COEX_ENABLE is not set
 # CONFIG_ESP_WIFI_EXTERNAL_COEXIST_ENABLE is not set
+# CONFIG_MCPWM_ISR_IRAM_SAFE is not set
 # CONFIG_EVENT_LOOP_PROFILING is not set
 CONFIG_POST_EVENTS_FROM_ISR=y
 CONFIG_POST_EVENTS_FROM_IRAM_ISR=y

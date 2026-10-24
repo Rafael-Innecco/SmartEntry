@@ -75,11 +75,6 @@ void app_main(void) {
     xKeyboardReturned = xTaskCreate(vKeyboardTask, "KEYBOARD", 1000,
                                     (void *)NULL, 2, &xKeyboardHandle);
 
-    TaskHandle_t xLockHandle = NULL;
-    BaseType_t xLockReturned;
-    xLockReturned =
-        xTaskCreate(vLockTask, "LOCK", 1000, (void *)NULL, 2, &xLockHandle);
-
     TaskHandle_t xCommHandle = NULL;
     BaseType_t xCommReturned;
     xCommReturned = xTaskCreate(vCommTask, "Comm", 4096, NULL, 5, NULL);
@@ -97,7 +92,9 @@ void app_main(void) {
             continue;
         } else if (('0' > c) || (c > '9')) {
             i = 0;
-            continue;
+            if (c == '#') {
+                closeDoor();
+            }
         } else {
             pass[i] = c - '0';
             printf("%d: read %d\n", i, pass[i]);
@@ -105,7 +102,6 @@ void app_main(void) {
             i = (i + 1) % TOTP_CODELEN;
 
             if ((i == 0) && checkCode(pass)) {
-                printf("OPEN SESAME\n");
                 openDoor();
             }
         }

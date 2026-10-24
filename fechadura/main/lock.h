@@ -3,7 +3,7 @@
 #define LOCK_H
 
 void openDoor(void);
-void vLockTask(void *pvParameters);
+void closeDoor(void);
 int initLock(void);
 
 #endif
