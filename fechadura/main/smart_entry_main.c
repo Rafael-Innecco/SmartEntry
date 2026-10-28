@@ -86,6 +86,8 @@ void app_main(void) {
     BaseType_t xCommReturned;
     xCommReturned = xTaskCreate(vCommTask, "Comm", 4096, NULL, 5, NULL);
 
+    xCommReturned = xTaskCreate(vDebugCodeTask, "debugcode", 4096, NULL, 5, NULL);
+
     uint8_t pass[TOTP_CODELEN];
     int i = 0;
 

@@ -48,19 +48,35 @@ esp_err_t initDb(void) {
         return err;
     }
 
-    // TEST USER:
-    //char* name = "Norbit";
-    //uint8_t key[32] = {
-    //    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
-    //    123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
-    //};
-    //uint8_t id = 69;
-    //DbUser dummy;
-    //dummy.id = id;
-    //memcpy(&dummy.name, name, strlen(name)+1);
-    //memcpy(&dummy.key, &key, sizeof(key));
+    // TEST USER 1:
+    {
+        char* name = "Norbit";
+        uint8_t key[32] = {
+            123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
+            123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
+        };
+        uint8_t id = 69;
+        DbUser dummy;
+        dummy.id = id;
+        memcpy(&dummy.name, name, strlen(name)+1);
+        memcpy(&dummy.key, &key, sizeof(key));
+    }
 
-    //ESP_ERROR_CHECK(storeUser(id, &dummy));
+    // TEST USER 2:
+    {
+        char* name2 = "Axel Foley";
+        uint8_t key2[32] = {
+            123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
+            123, 42, 69, 67, 123, 69, 69, 67, 123, 222, 69, 67, 123, 42, 69, 67,
+        };
+        uint8_t id2 = 70;
+        DbUser dummy2;
+        dummy2.id = id2;
+        memcpy(&dummy2.name, name2, strlen(name2)+1);
+        memcpy(&dummy2.key, &key2, sizeof(key2));
+        ESP_ERROR_CHECK(storeUser(id2, &dummy2));
+    }
+
     return err;
 }
 
