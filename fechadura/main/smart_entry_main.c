@@ -14,6 +14,7 @@
 #include "nvs_flash.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
+#include "esp_log.h"
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -22,8 +23,11 @@
 #include "keyboard.h"
 #include "lock.h"
 #include "password.h"
+#include "db.h"
 #include "totp/totp.h"
 #include "zigbee/data_producer.h"
+
+#define TAG "main"
 
 void app_main(void) {
     printf("Hello world - GPIOD!\n");
@@ -60,15 +64,18 @@ void app_main(void) {
 
     printf("initializing kbd...\n");
     if (initializeKbdGpio()) {
-        printf("kbd intialization failed\n");
+        ESP_LOGE(TAG, "kbd intialization failed\n");
         return;
     }
 
     printf("initializing lock...\n");
     if (initLock()) {
-        printf("lock intialization failed\n");
+        ESP_LOGE(TAG, "lock intialization failed\n");
         return;
     }
+
+    esp_err_t err = initDb();
+    ESP_ERROR_CHECK(err);
 
     TaskHandle_t xKeyboardHandle = NULL;
     BaseType_t xKeyboardReturned;
