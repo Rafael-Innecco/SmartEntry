@@ -25,7 +25,7 @@
 #include "password.h"
 #include "db.h"
 #include "totp/totp.h"
-#include "zigbee/data_producer.h"
+#include "communication/communication.h"
 
 #define TAG "main"
 
