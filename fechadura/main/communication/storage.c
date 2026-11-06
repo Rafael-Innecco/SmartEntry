@@ -1,9 +1,12 @@
 #include "storage.h"
 #include <string.h>
 #include <stdio.h>
+#include "../db.h"
+#include "esp_err.h"
 #include "nvs_flash.h"
 #include "nvs.h"
 #include "esp_log.h"
+#include "protocol.h"
 
 static const char *TAG = "SE_STORAGE";
 static const char *NVS_NAMESPACE = "se_storage";
@@ -12,7 +15,7 @@ static const char *NVS_NAMESPACE = "se_storage";
 static uint8_t s_app_key[SMART_ENTRY_APP_KEY_LEN];
 static bool s_has_key = false;
 static uint32_t s_counter = 0;
-static smart_entry_slot_t s_slots[SMART_ENTRY_MAX_SLOTS];
+static uint64_t s_last_used_step[SMART_ENTRY_MAX_SLOTS];
 
 /* Replay cache for the last executed command */
 static uint32_t s_cached_counter = 0;
@@ -28,6 +31,14 @@ static const uint8_t DEFAULT_TEST_KEY[SMART_ENTRY_APP_KEY_LEN] = {
 };
 
 bool smart_entry_storage_init(void) {
+    esp_err_t db_err = initDb();
+    if (db_err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to initialize DB: %s", esp_err_to_name(db_err));
+        return false;
+    }
+
+    memset(s_last_used_step, 0, sizeof(s_last_used_step));
+
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
@@ -51,21 +62,6 @@ bool smart_entry_storage_init(void) {
     err = nvs_get_u32(handle, "counter", &s_counter);
     if (err != ESP_OK) {
         s_counter = 0;
-    }
-
-    /* Load Slots */
-    memset(s_slots, 0, sizeof(s_slots));
-    for (int i = 0; i < SMART_ENTRY_MAX_SLOTS; i++) {
-        char key_name[16];
-        snprintf(key_name, sizeof(key_name), "slot_%d", i);
-
-        size_t slot_len = sizeof(smart_entry_slot_t);
-        err = nvs_get_blob(handle, key_name, &s_slots[i], &slot_len);
-        if (err != ESP_OK || slot_len != sizeof(smart_entry_slot_t)) {
-            s_slots[i].flags = 0;
-            memset(s_slots[i].totp_secret, 0, SMART_ENTRY_APP_KEY_LEN);
-            s_slots[i].last_used_step = 0;
-        }
     }
 
     nvs_commit(handle);
@@ -124,8 +120,21 @@ bool smart_entry_storage_get_slot(uint8_t slot_idx, smart_entry_slot_t *out_slot
     if (slot_idx >= SMART_ENTRY_MAX_SLOTS || !out_slot) {
         return false;
     }
-    memcpy(out_slot, &s_slots[slot_idx], sizeof(smart_entry_slot_t));
-    return true;
+
+    DbUser record;
+    esp_err_t ret = loadUser(slot_idx, &record);
+    if (ret == ESP_OK) {
+        out_slot->flags = SMART_ENTRY_SLOT_FLAG_OCCUPIED | SMART_ENTRY_SLOT_FLAG_TOTP;
+        memcpy(out_slot->totp_secret, record.key, SMART_ENTRY_APP_KEY_LEN);
+        out_slot->last_used_step = s_last_used_step[slot_idx];
+        return true;
+    } else if (ret == ESP_ERR_NVS_NOT_FOUND) {
+        memset(out_slot, 0, sizeof(smart_entry_slot_t));
+        return true;
+    }
+
+    ESP_LOGE(TAG, "Error loading user %u: %s", slot_idx, esp_err_to_name(ret));
+    return false;
 }
 
 bool smart_entry_storage_set_slot(uint8_t slot_idx, const uint8_t secret[SMART_ENTRY_APP_KEY_LEN]) {
@@ -133,26 +142,20 @@ bool smart_entry_storage_set_slot(uint8_t slot_idx, const uint8_t secret[SMART_E
         return false;
     }
 
-    smart_entry_slot_t new_slot;
-    new_slot.flags = SMART_ENTRY_SLOT_FLAG_OCCUPIED | SMART_ENTRY_SLOT_FLAG_TOTP;
-    memcpy(new_slot.totp_secret, secret, SMART_ENTRY_APP_KEY_LEN);
-    new_slot.last_used_step = 0;
+    DbUser user;
+    memset(&user, 0, sizeof(user));
+    user.id = slot_idx;
+    snprintf(user.name, sizeof(user.name), "Slot %u", slot_idx);
+    memcpy(user.key, secret, SMART_ENTRY_APP_KEY_LEN);
 
-    nvs_handle_t handle;
-    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
-
-    char key_name[16];
-    snprintf(key_name, sizeof(key_name), "slot_%d", slot_idx);
-
-    esp_err_t err = nvs_set_blob(handle, key_name, &new_slot, sizeof(smart_entry_slot_t));
-    if (err == ESP_OK) {
-        err = nvs_commit(handle);
-        if (err == ESP_OK) {
-            s_slots[slot_idx] = new_slot;
-        }
+    esp_err_t err = storeUser(slot_idx, &user);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to store user %u: %s", slot_idx, esp_err_to_name(err));
+        return false;
     }
-    nvs_close(handle);
-    return (err == ESP_OK);
+
+    s_last_used_step[slot_idx] = 0;
+    return true;
 }
 
 bool smart_entry_storage_clear_slot(uint8_t slot_idx) {
@@ -160,24 +163,34 @@ bool smart_entry_storage_clear_slot(uint8_t slot_idx) {
         return false;
     }
 
-    nvs_handle_t handle;
-    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
-
-    char key_name[16];
-    snprintf(key_name, sizeof(key_name), "slot_%d", slot_idx);
-
-    esp_err_t err = nvs_erase_key(handle, key_name);
-    if (err == ESP_OK || err == ESP_ERR_NVS_NOT_FOUND) {
-        err = nvs_commit(handle);
-        memset(&s_slots[slot_idx], 0, sizeof(smart_entry_slot_t));
+    esp_err_t err = eraseUser(slot_idx);
+    if (err != ESP_OK && err != ESP_ERR_NVS_NOT_FOUND) {
+        ESP_LOGE(TAG, "Failed to erase user %u: %s", slot_idx, esp_err_to_name(err));
+        return false;
     }
-    nvs_close(handle);
-    return (err == ESP_OK || err == ESP_ERR_NVS_NOT_FOUND);
+
+    s_last_used_step[slot_idx] = 0;
+    return true;
 }
 
 void smart_entry_storage_get_slots_bitmap(uint8_t out_slots[SMART_ENTRY_MAX_SLOTS]) {
-    for (int i = 0; i < SMART_ENTRY_MAX_SLOTS; i++) {
-        out_slots[i] = s_slots[i].flags;
+    if (!out_slots) {
+        return;
+    }
+
+    memset(out_slots, 0, SMART_ENTRY_MAX_SLOTS);
+
+    UserIterator userIt;
+    esp_err_t ret = initUserIter(&userIt);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Error initializing user iterator: %s", esp_err_to_name(ret));
+        return;
+    }
+
+    while (nextUser(&userIt) == ESP_OK) {
+        if (userIt.id < SMART_ENTRY_MAX_SLOTS) {
+            out_slots[userIt.id] = SMART_ENTRY_SLOT_FLAG_OCCUPIED | SMART_ENTRY_SLOT_FLAG_TOTP;
+        }
     }
 }
 
@@ -200,18 +213,6 @@ bool smart_entry_storage_get_cached_response(uint32_t counter, uint8_t *out_buf,
 bool smart_entry_storage_update_slot_step(uint8_t slot_idx, uint64_t step) {
     if (slot_idx >= SMART_ENTRY_MAX_SLOTS) return false;
 
-    s_slots[slot_idx].last_used_step = step;
-
-    nvs_handle_t handle;
-    if (nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle) != ESP_OK) return false;
-
-    char key_name[16];
-    snprintf(key_name, sizeof(key_name), "slot_%d", slot_idx);
-
-    esp_err_t err = nvs_set_blob(handle, key_name, &s_slots[slot_idx], sizeof(smart_entry_slot_t));
-    if (err == ESP_OK) {
-        nvs_commit(handle);
-    }
-    nvs_close(handle);
+    s_last_used_step[slot_idx] = step;
     return true;
 }
