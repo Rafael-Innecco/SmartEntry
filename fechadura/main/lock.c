@@ -89,7 +89,6 @@ int initLock(void) {
 
     // allocate lock semaphore
     lock_semaph = xSemaphoreCreateMutex();
-
     if (lock_semaph == NULL) {
         return 1;
     }

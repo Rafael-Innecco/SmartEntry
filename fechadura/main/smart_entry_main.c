@@ -26,6 +26,7 @@
 #include "db.h"
 #include "totp/totp.h"
 #include "communication/communication.h"
+#include "sleep.h"
 
 #define TAG "main"
 
@@ -62,6 +63,8 @@ void app_main(void) {
     printf("Minimum free heap size: %" PRIu32 " bytes\n",
            esp_get_minimum_free_heap_size());
 
+    setup_deep_sleep_wakeup();
+
     printf("initializing kbd...\n");
     if (initializeKbdGpio()) {
         ESP_LOGE(TAG, "kbd intialization failed\n");
@@ -91,7 +94,9 @@ void app_main(void) {
     uint8_t pass[TOTP_CODELEN];
     int i = 0;
 
-    for (;;) {
+    int ticks;
+    // wait for 30 seconds
+    for (ticks = 0; ticks < 300; ticks++) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
 
         char c;
@@ -101,9 +106,8 @@ void app_main(void) {
             continue;
         } else if (('0' > c) || (c > '9')) {
             i = 0;
-            if (c == '#') {
+            if (c == '#')
                 closeDoor();
-            }
         } else {
             pass[i] = c - '0';
             printf("%d: read %d\n", i, pass[i]);
@@ -116,7 +120,9 @@ void app_main(void) {
         }
     }
 
-    printf("Restarting now.\n");
+    go_to_sleep(); 
+
+    ESP_LOGI(TAG, "How did you get here? Restarting now.\n");
     fflush(stdout);
     esp_restart();
 }

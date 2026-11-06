@@ -14,4 +14,6 @@
 
 #define LOCK_CONTROL_PIN GPIO_NUM_8
 
+#define WAKEUP_PIN GPIO_NUM_9
+
 #endif
