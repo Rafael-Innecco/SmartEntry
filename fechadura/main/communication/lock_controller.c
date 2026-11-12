@@ -4,10 +4,8 @@
 #include "storage.h"
 #include "time_sync.h"
 #include "../totp/totp.h"
+#include "../lock.h"
 #include <string.h>
-
-/* Reference to external physical lock trigger */
-extern void openDoor(void);
 
 static const char *TAG = "SE_LOCK_CTRL";
 static uint8_t s_lock_state = SMART_ENTRY_DOOR_LOCKED;

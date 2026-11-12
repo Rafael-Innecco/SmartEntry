@@ -3,7 +3,11 @@ import { test } from "node:test"
 
 import { Zcl, type Models } from "zigbee-herdsman"
 
-import { installTimeGuard, smartEntryCluster } from "./herdsman-radio.js"
+import {
+  installTimeGuard,
+  registerTimeClusterOnCoordinator,
+  smartEntryCluster,
+} from "./herdsman-radio.js"
 import { LOCK_CLUSTER_ID } from "./lock-protocol.js"
 
 test("custom cluster serializes binary envelope as OCTET_STR with exactly one length byte", () => {
@@ -69,4 +73,29 @@ test("Time interception blocks automatic library response and returns invalid ti
       1: { value: unix === undefined ? 0 : 3, type: Zcl.DataType.BITMAP8 },
     })
   }
+})
+
+test("registerTimeClusterOnCoordinator adds 0x000a to coordinator endpoint inputClusters and skips duplicates", () => {
+  const coordinatorEndpoint = { inputClusters: [0x0000, 0x0003] } as unknown as Models.Endpoint
+  const otherEndpoint = { inputClusters: [0x000a] } as unknown as Models.Endpoint
+  const fakeController = {
+    getDevicesIterator: function* () {
+      yield {
+        type: "Coordinator",
+        endpoints: [coordinatorEndpoint, otherEndpoint],
+      } as unknown as Models.Device
+      yield {
+        type: "Router",
+        endpoints: [{ inputClusters: [] } as unknown as Models.Endpoint],
+      } as unknown as Models.Device
+    },
+  } as unknown as import("zigbee-herdsman").Controller
+
+  registerTimeClusterOnCoordinator(fakeController)
+
+  // 0x000a was added to the coordinator endpoint that lacked it
+  assert.ok(coordinatorEndpoint.inputClusters.includes(0x000a))
+  // Already-present 0x000a is not duplicated
+  assert.equal(otherEndpoint.inputClusters.filter((c) => c === 0x000a).length, 1)
+  // Non-coordinator endpoints are untouched
 })

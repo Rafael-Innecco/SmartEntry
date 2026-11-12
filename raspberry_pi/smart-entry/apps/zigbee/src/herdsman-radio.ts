@@ -37,13 +37,39 @@ type SmartEntryTypes = {
   commandResponses: never
 }
 
-/** Called before the library's onZclData handler, including for existing devices. */
+const TIME_CLUSTER_ID = 0x000a
+
+/**
+ * Registers the ZCL Time cluster (0x000a) as a server input cluster on the
+ * coordinator's endpoint so that herdsman routes Read Attributes frames from
+ * end-devices to the customReadResponse handler instead of rejecting them with
+ * a Default Response / UNSUPPORTED_CLUSTER (0xc3).
+ */
+export function registerTimeClusterOnCoordinator(
+  controller: Controller
+): void {
+  for (const device of controller.getDevicesIterator()) {
+    if (device.type !== "Coordinator") continue
+    for (const endpoint of device.endpoints) {
+      if (!endpoint.inputClusters.includes(TIME_CLUSTER_ID)) {
+        endpoint.inputClusters.push(TIME_CLUSTER_ID)
+      }
+    }
+  }
+}
+
+/**
+ * Installs a customReadResponse hook on the given device (must be the
+ * coordinator device, which acts as the ZCL Time Server) so that incoming
+ * Read Attributes requests for cluster 0x000a are answered with the
+ * NTP-synced system time and the library's default response is suppressed.
+ */
 export function installTimeGuard(
   device: Models.Device,
   clock: TrustedClock
 ): void {
   device.customReadResponse = (frame, endpoint) => {
-    if (frame.cluster.ID !== 0x000a) return false
+    if (frame.cluster.ID !== TIME_CLUSTER_ID) return false
     const ids = (frame.payload as { attrId: number }[]).map(
       (item) => item.attrId
     )
@@ -62,7 +88,7 @@ export function installTimeGuard(
                 : { value: undefined, type: Zcl.DataType.NO_DATA }
         }
         await endpoint.readResponse(
-          0x000a,
+          TIME_CLUSTER_ID,
           frame.header.transactionSequenceNumber,
           response,
           {
@@ -119,21 +145,19 @@ export class HerdsmanRadio implements LockRadio {
     this.disconnected = new AbortController()
     const controller = createCoordinator(this.config)
     this.controller = controller
-    const configure = (device: Models.Device) => {
-      installTimeGuard(device, this.clock)
+    const configureLock = (device: Models.Device) => {
       if (device.ieeeAddr.toLowerCase() === this.config.lockIeee)
         device.addCustomCluster("smartEntry", smartEntryCluster)
     }
-    controller.on("deviceJoined", ({ device }) => configure(device))
-    controller.on("deviceAnnounce", ({ device }) => configure(device))
+    controller.on("deviceJoined", ({ device }) => configureLock(device))
+    controller.on("deviceAnnounce", ({ device }) => configureLock(device))
     controller.on("adapterDisconnected", () => {
       this.running = false
       this.disconnected.abort()
       this.disconnectHandler?.()
     })
     controller.on("message", (message) => {
-      // Controller emits message synchronously before default Time responses.
-      configure(message.device)
+      configureLock(message.device)
       if (
         message.device.ieeeAddr.toLowerCase() !== this.config.lockIeee ||
         message.endpoint.ID !== LOCK_ENDPOINT ||
@@ -156,7 +180,14 @@ export class HerdsmanRadio implements LockRadio {
     await controller.start(signal)
     signal.throwIfAborted()
     await controller.permitJoin(0)
-    for (const device of controller.getDevicesIterator()) configure(device)
+    // Register 0x000a as a server input cluster on the coordinator so herdsman
+    // routes Read Attributes frames from end-devices (instead of replying with
+    // UNSUPPORTED_CLUSTER / 0xc3), then install the customReadResponse guard.
+    registerTimeClusterOnCoordinator(controller)
+    for (const device of controller.getDevicesIterator()) {
+      if (device.type === "Coordinator") installTimeGuard(device, this.clock)
+      else configureLock(device)
+    }
     this.running = true
     this.startupComplete = true
   }

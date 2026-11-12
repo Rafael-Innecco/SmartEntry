@@ -118,7 +118,8 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
     /* Counter check and replay protection */
     uint32_t last_counter = smart_entry_storage_get_counter();
 
-    /* Prepare base response envelope repeating opcode, slot, counter, session */
+    /* Prepare base response envelope repeating opcode, slot, counter, session
+     */
     smart_entry_envelope_t rsp_env = {
         .version = SMART_ENTRY_PROTOCOL_VERSION,
         .kind = SMART_ENTRY_KIND_RESPONSE,

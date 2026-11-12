@@ -39,7 +39,7 @@ function tag(key: Buffer, ieee: string, content: Buffer): Buffer {
   if (key.length !== 32 || !/^0x[0-9a-f]{16}$/.test(ieee)) {
     throw new Error("Invalid protocol key or lock IEEE address")
   }
-  return createHmac("sha256", key)
+  return createHmac("sha1", key)
     .update(DOMAIN)
     .update(Buffer.from(ieee.slice(2), "hex"))
     .update(content)
