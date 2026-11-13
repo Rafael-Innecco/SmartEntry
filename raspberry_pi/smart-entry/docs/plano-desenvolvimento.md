@@ -226,7 +226,7 @@ SQLite em modo WAL. A réplica pode ser reconstruída por um sync; o contador do
 
 ## Protocolo ZigBee proposto
 
-A [proposta SmartEntry v1](protocolo-zigbee-v1.md) é o contrato normativo implementado no Raspberry, com envelope binário, vetores de interoperabilidade, chave de aplicação de 32 bytes, HMAC-SHA256 truncado em 16 bytes, contador uint32, deadline e sessão de eventos. O time ESP ainda precisa adotá-la; o exemplo `0xFF00` atual é incompatível.
+A [proposta SmartEntry v1](protocolo-zigbee-v1.md) é o contrato normativo implementado no Raspberry, com envelope binário, vetores de interoperabilidade, chave de aplicação de 32 bytes, HMAC-SHA1 truncado em 16 bytes, contador uint32, deadline e sessão de eventos. O time ESP ainda precisa adotá-la; o exemplo `0xFF00` atual é incompatível.
 
 Todos os comandos e eventos usam `0xFC00` no endpoint 1, inclusive abertura. Time usa `0x000A`. A proposta anterior de Door Lock `0x0101` com HMAC no campo PIN foi substituída. Nenhum comando de abertura é enviado por esse cluster na implementação v1.
 

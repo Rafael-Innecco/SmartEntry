@@ -5,6 +5,18 @@ export class LockUnreachableError extends Error {
   }
 }
 
+/**
+ * A setup problem whose message is safe to print: it never contains keys,
+ * TOTP secrets or payloads. Other startup errors may come from the radio
+ * driver and are never printed verbatim.
+ */
+export class ConfigError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "ConfigError"
+  }
+}
+
 export class LockTimeoutError extends Error {
   constructor() {
     super("lock did not respond in time")

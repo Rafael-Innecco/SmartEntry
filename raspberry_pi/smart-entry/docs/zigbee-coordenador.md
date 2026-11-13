@@ -58,7 +58,9 @@ Preserve todo `/var/lib/smart-entry/zigbee`, incluindo `network.json`, `database
 
 O processo nunca regenera `network.json` durante diagnóstico, pareamento ou probe. Se faltar ou estiver inválido, restaure a identidade. `init` recusa diretórios com arquivos existentes.
 
-Após encerramento abrupto, `coordinator.lock` pode permanecer. Verifique o PID gravado e confirme que nenhum consumidor está usando a serial antes de remover **somente esse arquivo**. Não remova o diretório de dados para resolver um lock.
+O `coordinator.lock` guarda o PID e o identificador do boot do Linux. Um lock deixado por queda de energia, reinício, travamento ou encerramento forçado é recuperado automaticamente na inicialização seguinte, e o journal registra `Removed stale coordinator.lock left by a previous run`. Um lock de um processo que ainda está rodando no mesmo boot continua bloqueando, com a mensagem `coordinator.lock is held by running process <PID>`: pare esse processo (serviço ou CLI de bancada) em vez de apagar o arquivo. Não remova o diretório de dados para resolver um lock.
+
+Erros de configuração aparecem no journal como `SmartEntry startup failed: <motivo>`, por exemplo variável ausente, arquivo de chave inexistente ou com permissão errada, ou porta ocupada. As mensagens nunca incluem o conteúdo da chave. Erros vindos do driver do rádio continuam com a mensagem genérica, porque podem conter material sensível.
 
 ## Contrato proposto e ativação real
 

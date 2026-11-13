@@ -36,7 +36,7 @@ Todos os inteiros são unsigned little endian; o IEEE usado no HMAC é a exceç�
 Contadores começam em 1. Valores reservados/fora dos intervalos, formato incorreto e comprimento incompatível devem ser rejeitados antes de produzir efeitos. Respostas repetem **opcode, slot, contador, sessão e deadline do request**. A chave de aplicação tem 32 bytes aleatórios, exclusiva do vínculo Pi/fechadura, separada dos segredos TOTP e da chave da rede Zigbee.
 
 ```text
-tag = primeiros 16 bytes de HMAC-SHA256(
+tag = primeiros 16 bytes de HMAC-SHA1(
   chave_de_aplicacao_32_bytes,
   ASCII("SmartEntry/v1") || 0x00 || IEEE_fechadura_8_bytes || envelope_sem_tag
 )
@@ -126,12 +126,12 @@ Se já existir uma chave, preserve-a. Rotação exige provisionar ambos os lados
 
 Inicializar a identidade da rede e parear usando as ferramentas de [zigbee-coordenador.md](zigbee-coordenador.md). O serviço real mantém ingresso fechado; parar o serviço antes de executar a CLI na mesma serial. Configurações em `deploy/zigbee.env.example` descrevem o opt-in. Chave e contador da aplicação precisam existir nos dois lados antes do primeiro sync.
 
-O supervisor fecha o controlador anterior antes de reconectar, com espera inicial de 1 s e limite de 30 s. Falha de cleanup ou startup incompleto encerra o processo para recuperação pelo systemd; não abre outro controlador sobre recursos incertos. Após SIGINT/SIGTERM, recusa novas conexões HTTP, encerra o rádio e limita a finalização a 10 s. Queda abrupta pode deixar `coordinator.lock`; verificar que não há processo usando a serial e remover somente esse arquivo antes de reiniciar. Não há recuperação automática de lock abandonado nesta revisão.
+O supervisor fecha o controlador anterior antes de reconectar, com espera inicial de 1 s e limite de 30 s. Falha de cleanup ou startup incompleto encerra o processo para recuperação pelo systemd; não abre outro controlador sobre recursos incertos. Após SIGINT/SIGTERM, recusa novas conexões HTTP, encerra o rádio e limita a finalização a 10 s. Um `coordinator.lock` deixado por queda abrupta, reinício ou travamento é recuperado automaticamente na inicialização seguinte (PID e identificador de boot); um lock de processo ainda ativo continua bloqueando.
 
 ## Vetor de interoperabilidade
 
 O arquivo [`lock-protocol-v1.json`](../apps/zigbee/src/fixtures/lock-protocol-v1.json) usa **chave fixa de teste**, calculada também com Python `hmac`, `hashlib` e `struct`. O teste TypeScript exige igualdade byte a byte. Usar esse vetor em um teste C antes de ligar o mecanismo.
 
-Parâmetros: kind 0, setUser (2), slot 3, contador `0x01020304`, sessão `a0a1a2a3a4a5a6a7`, deadline Unix `1800000008`, dados `20..3f` hexadecimal. A tag esperada é `ee9f1c3bf6230f3faa327b61055d0a21`. O fixture inclui chave, IEEE e envelope completo. Nunca usar essa chave em uma instalação.
+Parâmetros: kind 0, setUser (2), slot 3, contador `0x01020304`, sessão `a0a1a2a3a4a5a6a7`, deadline Unix `1800000008`, dados `20..3f` hexadecimal. A tag esperada (HMAC-SHA1) é `b9a4028581130b26c505d196b291ef5b`. O fixture inclui chave, IEEE e envelope completo. Nunca usar essa chave em uma instalação.
 
 Validação simulada cobre autenticação, adulteração de todos os bytes, correlação, replay, prazo, ACK perdido, persistência/reabertura do SQLite, sync, eventos, NTP, serialização ZCL real do herdsman e supervisão. Ela não comprova implementação do firmware, comportamento das filas do rádio, precisão do relógio, consumo em sleep, tempo da flash ou atuação física. Esses itens exigem os testes de bancada com a rede estabilizada.

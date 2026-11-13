@@ -9,9 +9,13 @@ import {
   loadNetwork,
   readCoordinatorConfig,
 } from "./coordinator-config.js"
+import { ConfigError } from "./errors.js"
 
 test("coordinator rejects missing serial path, unsupported driver and malformed IEEE", () => {
-  assert.throws(() => readCoordinatorConfig({}), /SERIAL_PATH/)
+  assert.throws(
+    () => readCoordinatorConfig({}),
+    (err: Error) => err instanceof ConfigError && /SERIAL_PATH/.test(err.message)
+  )
   const env = { SMART_ENTRY_ZIGBEE_SERIAL_PATH: "/dev/serial/by-id/test" }
   assert.equal(readCoordinatorConfig(env).adapter, "zstack")
   assert.throws(

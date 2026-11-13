@@ -1,24 +1,110 @@
 import assert from "node:assert/strict"
-import { mkdtempSync, rmSync } from "node:fs"
+import { spawnSync } from "node:child_process"
+import {
+  existsSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { test } from "node:test"
 
 import {
   acquireCoordinatorLease,
+  isStaleLease,
   runCoordinatorSession,
 } from "./coordinator.js"
+import { ConfigError } from "./errors.js"
 
-test("coordinator refuses concurrent owners and allows reuse after shutdown", () => {
+function withStateDir(run: (dir: string) => void): void {
   const dir = mkdtempSync(join(tmpdir(), "smart-entry-lease-"))
   try {
-    const release = acquireCoordinatorLease(dir)
-    assert.throws(() => acquireCoordinatorLease(dir), /coordinator.lock/)
-    release()
-    acquireCoordinatorLease(dir)()
+    run(dir)
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+}
+
+/** The pid of a process that has already exited. */
+function deadPid(): number {
+  const child = spawnSync(process.execPath, ["-e", ""])
+  assert.ok(child.pid)
+  return child.pid
+}
+
+test("coordinator refuses concurrent owners and allows reuse after shutdown", () => {
+  withStateDir((dir) => {
+    const release = acquireCoordinatorLease(dir)
+    assert.throws(
+      () => acquireCoordinatorLease(dir),
+      (err: Error) =>
+        err instanceof ConfigError &&
+        err.message.includes(`held by running process ${process.pid}`)
+    )
+    release()
+    assert.equal(existsSync(join(dir, "coordinator.lock")), false)
+    acquireCoordinatorLease(dir)()
+  })
+})
+
+test("a lock abandoned by a crash, an old version or a cut write is reclaimed", () => {
+  const abandoned = [
+    `${deadPid()}\nsome-boot\n`,
+    `${deadPid()}\n`,
+    "",
+    "garbage",
+  ]
+  for (const content of abandoned) {
+    withStateDir((dir) => {
+      writeFileSync(join(dir, "coordinator.lock"), content)
+      const release = acquireCoordinatorLease(dir)
+      const lock = readFileSync(join(dir, "coordinator.lock"), "utf8")
+      assert.equal(lock.split("\n")[0], String(process.pid))
+      release()
+      assert.deepEqual(readdirSync(dir), [], "no lock or temp file remains")
+    })
+  }
+})
+
+test("a lock held by another live process is not reclaimed", () => {
+  withStateDir((dir) => {
+    const held = `${process.ppid}\n-\n`
+    writeFileSync(join(dir, "coordinator.lock"), held)
+    assert.throws(
+      () => acquireCoordinatorLease(dir),
+      new RegExp(`held by running process ${process.ppid}`)
+    )
+    assert.equal(readFileSync(join(dir, "coordinator.lock"), "utf8"), held)
+  })
+})
+
+test("release never deletes a lock another coordinator took over", () => {
+  withStateDir((dir) => {
+    const release = acquireCoordinatorLease(dir)
+    writeFileSync(join(dir, "coordinator.lock"), `${process.ppid}\n-\n`)
+    release()
+    assert.equal(existsSync(join(dir, "coordinator.lock")), true)
+  })
+})
+
+test("staleness is decided by boot id first, then by process liveness", () => {
+  const alive = () => true
+  const dead = () => false
+  // Written before the last reboot or power loss.
+  assert.equal(isStaleLease("123\nboot-a\n", "boot-b", 999, alive), true)
+  // Same boot: depends on whether the owner still runs.
+  assert.equal(isStaleLease("123\nboot-a\n", "boot-a", 999, alive), false)
+  assert.equal(isStaleLease("123\nboot-a\n", "boot-a", 999, dead), true)
+  // Without boot ids (e.g. Windows) only liveness counts.
+  assert.equal(isStaleLease("123\n-\n", null, 999, alive), false)
+  assert.equal(isStaleLease("123\n-\n", null, 999, dead), true)
+  // An old pid-only lock with our own pid must predate this boot.
+  assert.equal(isStaleLease("999\n", "boot-a", 999, alive), true)
+  // Our own current lock is held.
+  assert.equal(isStaleLease("999\nboot-a\n", "boot-a", 999, alive), false)
 })
 
 test("coordinator closes pairing and stops even when an action fails", async () => {

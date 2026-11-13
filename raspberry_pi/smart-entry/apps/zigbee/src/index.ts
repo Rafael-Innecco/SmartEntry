@@ -5,6 +5,7 @@ import { createDb, listUsers } from "@workspace/db"
 import { createApp } from "./app.js"
 import { readCoordinatorConfig } from "./coordinator-config.js"
 import { acquireCoordinatorLease } from "./coordinator.js"
+import { ConfigError } from "./errors.js"
 import { createFakeLockTransport } from "./fake-lock-transport.js"
 import { HerdsmanRadio } from "./herdsman-radio.js"
 import type { LockTransport } from "./lock-transport.js"
@@ -12,16 +13,54 @@ import { createTrustedClock } from "./trusted-clock.js"
 import { ZigbeeLockTransport } from "./zigbee-lock-transport.js"
 import { superviseRadio } from "./zigbee-supervisor.js"
 
+function errorCode(err: unknown): string {
+  return (err as NodeJS.ErrnoException).code ?? "error"
+}
+
+/** Reads the 32-byte HMAC key. Errors name the file, never its content. */
+function readLockKey(keyPath: string): Buffer {
+  let key: Buffer
+  try {
+    if (
+      process.platform !== "win32" &&
+      (statSync(keyPath).mode & 0o077) !== 0
+    ) {
+      throw new ConfigError(
+        `HMAC key file ${keyPath} must not be accessible by group or others (use chmod 600)`
+      )
+    }
+    key = readFileSync(keyPath)
+  } catch (err) {
+    if (err instanceof ConfigError) throw err
+    throw new ConfigError(
+      `Cannot read the HMAC key file ${keyPath} (${errorCode(err)}); see docs/protocolo-zigbee-v1.md`
+    )
+  }
+  if (key.length !== 32)
+    throw new ConfigError(
+      `HMAC key file ${keyPath} must contain exactly 32 raw bytes`
+    )
+  return key
+}
+
 async function main(): Promise<void> {
   const transport = process.env.SMART_ENTRY_TRANSPORT ?? "fake"
   if (transport !== "fake" && transport !== "zigbee")
-    throw new Error("Unsupported SMART_ENTRY_TRANSPORT")
+    throw new ConfigError(
+      `SMART_ENTRY_TRANSPORT must be "fake" or "zigbee", got "${transport}"`
+    )
   const port = Number(process.env.SMART_ENTRY_ZIGBEE_PORT ?? 4000)
   if (!Number.isInteger(port) || port < 1 || port > 65535)
-    throw new Error("Invalid HTTP port")
-  const db = createDb(
-    process.env.SMART_ENTRY_DB_PATH ?? "./data/smart-entry.sqlite3"
-  )
+    throw new ConfigError("SMART_ENTRY_ZIGBEE_PORT must be between 1 and 65535")
+  const dbPath = process.env.SMART_ENTRY_DB_PATH ?? "./data/smart-entry.sqlite3"
+  let db: ReturnType<typeof createDb>
+  try {
+    db = createDb(dbPath)
+  } catch (err) {
+    throw new ConfigError(
+      `Cannot open the database at ${dbPath} (${errorCode(err)})`
+    )
+  }
   const abort = new AbortController()
   let release: (() => void) | undefined
   let radio: HerdsmanRadio | undefined
@@ -29,26 +68,17 @@ async function main(): Promise<void> {
   try {
     if (transport === "zigbee") {
       if (process.env.SMART_ENTRY_ZIGBEE_PROTOCOL !== "smart-entry-v1") {
-        throw new Error(
+        throw new ConfigError(
           "Real transport requires explicit SMART_ENTRY_ZIGBEE_PROTOCOL=smart-entry-v1; firmware must implement the proposed contract"
         )
       }
       const config = readCoordinatorConfig(process.env)
-      if (!config.lockIeee) throw new Error("SMART_ENTRY_LOCK_IEEE is required")
+      if (!config.lockIeee)
+        throw new ConfigError("SMART_ENTRY_LOCK_IEEE is required")
       const keyPath = process.env.SMART_ENTRY_LOCK_HMAC_KEY_PATH
       if (!keyPath)
-        throw new Error("SMART_ENTRY_LOCK_HMAC_KEY_PATH is required")
-      if (
-        process.platform !== "win32" &&
-        (statSync(keyPath).mode & 0o077) !== 0
-      ) {
-        throw new Error(
-          "HMAC key file must not be accessible by group or others"
-        )
-      }
-      const key = readFileSync(keyPath)
-      if (key.length !== 32)
-        throw new Error("HMAC key file must contain exactly 32 raw bytes")
+        throw new ConfigError("SMART_ENTRY_LOCK_HMAC_KEY_PATH is required")
+      const key = readLockKey(keyPath)
       const clock = createTrustedClock()
       radio = new HerdsmanRadio(config, clock)
       release = acquireCoordinatorLease(config.stateDir)
@@ -69,9 +99,15 @@ async function main(): Promise<void> {
     }
     const { server, services } = createApp({ db, lock })
     await new Promise<void>((resolve, reject) => {
-      server.once("error", reject)
+      const onError = (err: unknown) =>
+        reject(
+          new ConfigError(
+            `Cannot listen on 127.0.0.1:${port} (${errorCode(err)})`
+          )
+        )
+      server.once("error", onError)
       server.listen(port, "127.0.0.1", () => {
-        server.removeListener("error", reject)
+        server.removeListener("error", onError)
         resolve()
       })
     })
@@ -119,10 +155,12 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch(() => {
-  // Configuration/driver errors may include key material; never dump raw errors.
+main().catch((err: unknown) => {
+  // Driver errors may include key material; only our own setup checks are printed.
   console.error(
-    "SmartEntry startup/shutdown failed; check configuration, state directory and coordinator access"
+    err instanceof ConfigError
+      ? `SmartEntry startup failed: ${err.message}`
+      : "SmartEntry startup/shutdown failed; check configuration, state directory and coordinator access"
   )
   process.exitCode = 1
   const force = setTimeout(() => process.exit(1), 1000)
