@@ -12,6 +12,7 @@
 #include "protocol.h"
 #include "storage.h"
 #include "time_sync.h"
+#include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -48,13 +49,15 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal) {
         if (status == EZB_BDB_STATUS_SUCCESS) {
             ESP_LOGI(TAG, "Device started up in %s factory-reset mode",
                      ezb_bdb_is_factory_new() ? "" : "non");
+            /* Logged before joining: the Pi needs this value (SMART_ENTRY_LOCK_IEEE) to pair. */
+            ezb_extaddr_t ext_addr;
+            ezb_nwk_get_extended_address(&ext_addr);
+            ESP_LOGI(TAG, "Lock IEEE: 0x%016" PRIx64, ext_addr.u64);
             if (ezb_bdb_is_factory_new()) {
                 ezb_bdb_start_top_level_commissioning(
                     EZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 ESP_LOGI(TAG, "Device rebooted, joined network");
-                uint16_t my_short_addr = ezb_nwk_get_short_address(); /* confirm exact API name for your SDK version */
-                ESP_LOGI(TAG, "My short address: 0x%04x", my_short_addr);
                 smart_entry_request_time_sync();
             }
         } else {
