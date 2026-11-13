@@ -2,6 +2,11 @@
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
   "globalPassThroughEnv": [
+    "SMART_ENTRY_TRANSPORT",
+    "SMART_ENTRY_DB_PATH",
+    "SMART_ENTRY_ZIGBEE_PORT",
+    "SMART_ENTRY_FAKE_DELAY_MS",
+    "SMART_ENTRY_FAKE_UNREACHABLE",
     "SMART_ENTRY_ZIGBEE_PROTOCOL",
     "SMART_ENTRY_LOCK_HMAC_KEY_PATH",
     "SMART_ENTRY_ZIGBEE_SERIAL_PATH",
