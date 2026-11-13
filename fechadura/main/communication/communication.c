@@ -53,6 +53,8 @@ static bool esp_zigbee_app_signal_handler(const ezb_app_signal_t *app_signal) {
                     EZB_BDB_MODE_NETWORK_STEERING);
             } else {
                 ESP_LOGI(TAG, "Device rebooted, joined network");
+                uint16_t my_short_addr = ezb_nwk_get_short_address(); /* confirm exact API name for your SDK version */
+                ESP_LOGI(TAG, "My short address: 0x%04x", my_short_addr);
                 smart_entry_request_time_sync();
             }
         } else {
