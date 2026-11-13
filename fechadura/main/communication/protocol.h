@@ -62,9 +62,11 @@ extern "C" {
 #define SMART_ENTRY_RESULT_SLOT_OCCUPIED           1
 #define SMART_ENTRY_RESULT_SLOT_EMPTY              2
 #define SMART_ENTRY_RESULT_CLOCK_UNRELIABLE        3
-#define SMART_ENTRY_RESULT_REPLAY_COUNTER          4
-#define SMART_ENTRY_RESULT_BAD_PAYLOAD             5
-#define SMART_ENTRY_RESULT_PERSIST_OR_MECH_FAIL    6
+#define SMART_ENTRY_RESULT_EXPIRED                 4  /* Pi numbering; deadline not enforced */
+#define SMART_ENTRY_RESULT_REPLAY_COUNTER          5
+#define SMART_ENTRY_RESULT_BAD_PAYLOAD             6
+#define SMART_ENTRY_RESULT_PERSIST_OR_MECH_FAIL    7
+
 
 /* Event Access Methods and Results */
 #define SMART_ENTRY_ACCESS_METHOD_TOTP     0
@@ -84,6 +86,7 @@ typedef struct {
     uint8_t  slot;
     uint32_t counter;
     uint8_t  session[SMART_ENTRY_SESSION_CHALLENGE_LEN];
+    uint32_t deadline;  /* Unix UTC seconds; only echoed back to the Pi */
     uint8_t  data_len;
     uint8_t  data[SMART_ENTRY_MAX_DATA_LEN];
     uint8_t  tag[SMART_ENTRY_TAG_LEN];

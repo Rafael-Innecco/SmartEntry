@@ -1,12 +1,9 @@
 #include "crypto.h"
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include "esp_log.h"
 #include "../totp/hmac.h"
 #include "protocol.h"
-#define MBEDTLS_DECLARE_PRIVATE_IDENTIFIERS
-#include "mbedtls/md.h"
 
 static const char *TAG = "SE_CRYPTO";
 
@@ -35,20 +32,26 @@ bool smart_entry_compute_hmac(const uint8_t key_32B[SMART_ENTRY_APP_KEY_LEN],
         return false;
     }
 
-    uint8_t output[20]; 
+    if (env_no_tag_len > SMART_ENTRY_HEADER_LEN + SMART_ENTRY_MAX_DATA_LEN) {
+        return false;
+    }
 
-    unsigned int input_size = sizeof(uint8_t) * (SMART_ENTRY_HMAC_PREFIX_LEN + 1 + SMART_ENTRY_IEEE_LEN + env_no_tag_len); 
-    uint8_t* input = malloc(input_size);
+    /* "SmartEntry/v1" || 0x00 || IEEE (8 bytes BE) || envelope_without_tag */
+    uint8_t input[SMART_ENTRY_HMAC_PREFIX_LEN + 1 + SMART_ENTRY_IEEE_LEN +
+                  SMART_ENTRY_HEADER_LEN + SMART_ENTRY_MAX_DATA_LEN];
+    size_t off = 0;
+    memcpy(&input[off], SMART_ENTRY_HMAC_PREFIX, SMART_ENTRY_HMAC_PREFIX_LEN);
+    off += SMART_ENTRY_HMAC_PREFIX_LEN;
+    input[off++] = 0x00;
+    memcpy(&input[off], ieee_be_8B, SMART_ENTRY_IEEE_LEN);
+    off += SMART_ENTRY_IEEE_LEN;
+    memcpy(&input[off], env_no_tag, env_no_tag_len);
+    off += env_no_tag_len;
 
-    memcpy(input, &SMART_ENTRY_HMAC_PREFIX, SMART_ENTRY_HMAC_PREFIX_LEN);
-    uint8_t sep = 0x00;
-    memcpy(input, &sep, 1);
-    memcpy(input, ieee_be_8B, SMART_ENTRY_IEEE_LEN);
-    memcpy(input, env_no_tag, env_no_tag_len);
+    uint8_t output[20];
+    hmac_sha1(key_32B, SMART_ENTRY_APP_KEY_LEN, input, (uint32_t)off, output);
 
-    hmac_sha1(key_32B, SMART_ENTRY_APP_KEY_LEN, input, env_no_tag_len, output);
-
-    /* First 16 bytes of HMAC-SHA256 */
+    /* First 16 bytes of HMAC-SHA1 */
     memcpy(out_tag_16B, output, SMART_ENTRY_TAG_LEN);
     return true;
 }
@@ -88,14 +91,14 @@ bool smart_entry_crypto_self_test(void) {
         0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2a,
         0x2b, 0x2c, 0x2d, 0x2e, 0x2f, 0x30, 0x31, 0x32,
         0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3a,
-        0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0xee, 0x9f, 0x1c,
-        0x3b, 0xf6, 0x23, 0x0f, 0x3f, 0xaa, 0x32, 0x7b,
-        0x61, 0x05, 0x5d, 0x0a, 0x21
+        0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0xb9, 0xa4, 0x02,
+        0x85, 0x81, 0x13, 0x0b, 0x26, 0xc5, 0x05, 0xd1,
+        0x96, 0xb2, 0x91, 0xef, 0x5b
     };
 
     static const uint8_t expected_tag[16] = {
-        0xee, 0x9f, 0x1c, 0x3b, 0xf6, 0x23, 0x0f, 0x3f,
-        0xaa, 0x32, 0x7b, 0x61, 0x05, 0x5d, 0x0a, 0x21
+        0xb9, 0xa4, 0x02, 0x85, 0x81, 0x13, 0x0b, 0x26,
+        0xc5, 0x05, 0xd1, 0x96, 0xb2, 0x91, 0xef, 0x5b
     };
 
     uint8_t computed_tag[16];
@@ -110,6 +113,6 @@ bool smart_entry_crypto_self_test(void) {
         return false;
     }
 
-    ESP_LOGI(TAG, "Cryptographic self-test PASSED (HMAC-SHA256 matches test vector)");
+    ESP_LOGI(TAG, "Cryptographic self-test PASSED (HMAC-SHA1 matches test vector)");
     return true;
 }

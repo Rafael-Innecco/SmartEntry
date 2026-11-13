@@ -47,7 +47,7 @@ async function main(): Promise<void> {
     )
   }
 
-  const controller = createCoordinator(config)
+  const controller = createCoordinator(config, { verboseErrors: true })
   const clock = createTrustedClock()
   controller.on("message", ({ device }) => installTimeGuard(device, clock))
   controller.on("deviceJoined", ({ device }) => installTimeGuard(device, clock))

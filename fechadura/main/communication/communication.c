@@ -238,6 +238,9 @@ static esp_err_t esp_zigbee_create_smart_entry_device(void) {
 
 static esp_err_t esp_zigbee_setup_commissioning(void) {
     ezb_aps_secur_enable_distributed_security(false);
+    /* Non-sleepy end device: the Pi sends requests at any time and must not
+     * depend on parent polling. Must be set before joining. */
+    ezb_nwk_set_rx_on_when_idle(true);
     ESP_ERROR_CHECK(
         ezb_bdb_set_primary_channel_set(ESP_ZIGBEE_PRIMARY_CHANNEL_MASK));
     ESP_ERROR_CHECK(
@@ -250,11 +253,11 @@ void vCommTask(void *pvParameters) {
     ESP_LOGI(TAG, "Starting SmartEntry Zigbee v1 Communication Task");
 
     /* 1. Run cryptographic self-test against reference test vector */
-    // if (!smart_entry_crypto_self_test()) {
-    //     ESP_LOGE(TAG, "Cryptographic self-test failed! Aborting startup.");
-    //     vTaskDelete(NULL);
-    //     return;
-    // }
+    if (!smart_entry_crypto_self_test()) {
+        ESP_LOGE(TAG, "Cryptographic self-test failed! Aborting startup.");
+        vTaskDelete(NULL);
+        return;
+    }
 
     /* 2. Initialize application subsystems */
     smart_entry_storage_init();

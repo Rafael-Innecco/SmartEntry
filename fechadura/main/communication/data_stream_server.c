@@ -126,6 +126,7 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
         .opcode = req_env.opcode,
         .slot = req_env.slot,
         .counter = req_env.counter,
+        .deadline = req_env.deadline, /* echoed, not enforced */
         .data_len = 1,
     };
     memcpy(rsp_env.session, req_env.session, SMART_ENTRY_SESSION_CHALLENGE_LEN);

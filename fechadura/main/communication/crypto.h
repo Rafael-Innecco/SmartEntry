@@ -19,7 +19,7 @@ extern "C" {
 void smart_entry_ieee_to_big_endian(uint64_t ieee_u64, uint8_t out_ieee_be[SMART_ENTRY_IEEE_LEN]);
 
 /**
- * @brief Compute the 16-byte HMAC-SHA256 tag for a given envelope.
+ * @brief Compute the 16-byte HMAC-SHA1 tag (first 16 bytes) for a given envelope.
  *
  * Signing payload:
  * ASCII("SmartEntry/v1") || 0x00 || IEEE_fechadura_8_bytes_BE || envelope_without_tag

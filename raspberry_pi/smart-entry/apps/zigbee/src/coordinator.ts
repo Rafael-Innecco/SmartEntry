@@ -11,14 +11,25 @@ import { ConfigError } from "./errors.js"
 
 type CoordinatorConfig = ReturnType<typeof readCoordinatorConfig>
 
-export function createCoordinator(config: CoordinatorConfig): Controller {
+export function createCoordinator(
+  config: CoordinatorConfig,
+  options: { verboseErrors?: boolean } = {}
+): Controller {
   // The default driver logger prints command payloads, including TOTP secrets.
+  // Only the bench CLI (pair/probe/diagnose, no secrets on the wire) shows error text.
   setLogger({
     debug() {},
     info() {},
-    warning() {},
-    error(_message, namespace) {
-      console.error(`Zigbee driver error (${namespace})`)
+    warning(message, namespace) {
+      if (options.verboseErrors)
+        console.error(`Zigbee driver warning (${namespace}): ${String(message)}`)
+    },
+    error(message, namespace) {
+      console.error(
+        options.verboseErrors
+          ? `Zigbee driver error (${namespace}): ${String(message)}`
+          : `Zigbee driver error (${namespace})`
+      )
     },
   })
   const network = loadNetwork(config.stateDir)

@@ -36,6 +36,10 @@ bool smart_entry_parse_envelope(const uint8_t *buf, size_t buf_len,
     /* Session challenge (8 bytes) */
     memcpy(out_env->session, &buf[8], SMART_ENTRY_SESSION_CHALLENGE_LEN);
 
+    /* Little-endian 32-bit deadline */
+    out_env->deadline = (uint32_t)buf[16] | ((uint32_t)buf[17] << 8) |
+                        ((uint32_t)buf[18] << 16) | ((uint32_t)buf[19] << 24);
+
     out_env->data_len = data_len;
     if (data_len > 0) {
         memcpy(out_env->data, &buf[21], data_len);
@@ -70,6 +74,12 @@ bool smart_entry_serialize_envelope_no_tag(const smart_entry_envelope_t *env,
 
     /* Session challenge */
     memcpy(&out_buf[8], env->session, SMART_ENTRY_SESSION_CHALLENGE_LEN);
+
+    /* Little-endian deadline */
+    out_buf[16] = (uint8_t)(env->deadline & 0xFF);
+    out_buf[17] = (uint8_t)((env->deadline >> 8) & 0xFF);
+    out_buf[18] = (uint8_t)((env->deadline >> 16) & 0xFF);
+    out_buf[19] = (uint8_t)((env->deadline >> 24) & 0xFF);
 
     out_buf[20] = env->data_len;
     if (env->data_len > 0) {
