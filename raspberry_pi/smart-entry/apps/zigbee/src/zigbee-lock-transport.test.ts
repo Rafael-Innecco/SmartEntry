@@ -13,6 +13,7 @@ import {
 import {
   Command,
   Event,
+  NO_SLOT,
   decodePacket,
   encodePacket,
   type Packet,
@@ -60,10 +61,13 @@ function bench() {
     lastCounter = request.counter // Persist before effects/ack, also for listSlots.
     let data: number[] = [0]
     if (request.opcode === Command.listSlots) {
+      const occupiedSlots = [...slots.keys()]
       data = [
         0,
         1,
-        ...Array.from({ length: 10 }, (_, i) => (slots.has(i) ? 3 : 0)),
+        occupiedSlots.length,
+        ...occupiedSlots,
+        ...Array<number>(10 - occupiedSlots.length).fill(NO_SLOT),
       ]
     } else if (request.opcode === Command.setUser) {
       if (slots.has(request.slot)) data = [1]
@@ -159,7 +163,13 @@ test("real services sync/register/unlock/remove require signed confirmations and
       new URL(created.totpUri).searchParams.get("secret")?.length,
       52
     )
-    assert.equal(b.slots.get(0)?.length, 32)
+    const payload = b.slots.get(0)
+    assert.ok(payload)
+    assert.equal(payload.length, 36)
+    assert.deepEqual(
+      payload.subarray(32),
+      Buffer.from([3, ...Buffer.from("Ana")])
+    )
     assert.equal(listUsers(b.db)[0]?.name, "Ana")
     assert.equal(isLockSyncRequired(b.db), false)
     await b.services.unlock()
@@ -204,6 +214,30 @@ test("lost registration ACK survives a new transport and sync recovers the commi
   }
 })
 
+test("sync waits for a valid slot list before reconciling users", async () => {
+  const b = bench()
+  try {
+    b.slots.set(0, Buffer.alloc(32))
+    b.slots.set(9, Buffer.alloc(32))
+    await b.services.sync()
+    b.queued = true
+    const sync = b.services.sync()
+    await new Promise((resolve) => setImmediate(resolve))
+    const request = b.sent.at(-1)!
+    const padding = Array<number>(8).fill(NO_SLOT)
+    b.respond(request, [0, 1, 11, 0, 9, ...padding])
+    b.respond(request, [0, 1, 2, 9, 9, ...padding])
+    b.respond(request, [0, 1, 2, 9, 42, ...padding])
+    b.respond(request, [0, 1, 1, 0, 9, ...padding])
+    b.slots.delete(0)
+    b.deliver(request)
+    const { users } = await sync
+    assert.deepEqual(users.map((user) => user.id), [9])
+  } finally {
+    b.db.close()
+  }
+})
+
 test("expired queued unlock never actuates; newer sync also fences delayed commands", async () => {
   const b = bench()
   try {
@@ -228,12 +262,13 @@ test("no NTP means no mutating transmission, while read-only reconciliation rema
   const b = bench()
   try {
     b.ntp = false
-    await b.services.sync()
     await assert.rejects(b.lock.unlock(), ClockUnsyncedError)
     await assert.rejects(
-      b.lock.setUser(0, Buffer.alloc(32)),
+      b.lock.setUser(0, Buffer.alloc(32), "Ana"),
       ClockUnsyncedError
     )
+    assert.equal(b.sent.length, 0)
+    await b.services.sync()
     assert.equal(b.sent.length, 1)
     b.ntp = true
     await b.lock.unlock()

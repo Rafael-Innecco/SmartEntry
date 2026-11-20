@@ -1,8 +1,12 @@
 import { createHmac, timingSafeEqual } from "node:crypto"
 
+import { LOCK_SLOT_COUNT } from "@workspace/shared"
+
 export const LOCK_CLUSTER_ID = 0xfc00
 export const LOCK_ENDPOINT = 1
 export const NO_SLOT = 0xff
+export const TOTP_SECRET_BYTES = 32
+export const MAX_NAME_BYTES = 20
 export const Command = {
   listSlots: 1,
   setUser: 2,
@@ -34,6 +38,7 @@ export interface Packet {
 const DOMAIN = Buffer.from("SmartEntry/v1\0", "ascii")
 const HEADER = 21
 const TAG = 16
+const MAX_DATA_BYTES = TOTP_SECRET_BYTES + 1 + MAX_NAME_BYTES
 
 function tag(key: Buffer, ieee: string, content: Buffer): Buffer {
   if (key.length !== 32 || !/^0x[0-9a-f]{16}$/.test(ieee)) {
@@ -55,7 +60,7 @@ export function encodePacket(
 ): Buffer {
   if (
     packet.session.length !== 8 ||
-    packet.data.length > 64 ||
+    packet.data.length > MAX_DATA_BYTES ||
     !Number.isInteger(packet.counter) ||
     packet.counter < 1 ||
     packet.counter > 0xffffffff ||
@@ -68,7 +73,7 @@ export function encodePacket(
     packet.opcode > (packet.kind === 2 ? 2 : 4) ||
     !(
       packet.slot === NO_SLOT ||
-      (Number.isInteger(packet.slot) && packet.slot >= 0 && packet.slot <= 9)
+      (Number.isInteger(packet.slot) && packet.slot >= 0 && packet.slot < LOCK_SLOT_COUNT)
     )
   ) {
     throw new Error("Invalid protocol packet")
@@ -89,7 +94,7 @@ export function encodePacket(
 export function decodePacket(wire: Buffer, key: Buffer, ieee: string): Packet {
   if (
     wire.length < HEADER + TAG ||
-    wire.length > HEADER + 64 + TAG ||
+    wire.length > HEADER + MAX_DATA_BYTES + TAG ||
     wire[0] !== 1 ||
     wire.length !== HEADER + wire[20]! + TAG
   ) {

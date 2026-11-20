@@ -77,11 +77,11 @@ bool smart_entry_storage_set_slot(uint8_t slot_idx,
 bool smart_entry_storage_clear_slot(uint8_t slot_idx);
 
 /**
- * @brief Get the 10-byte slots bitmap for listSlots response.
+ * @brief Write the occupied slot count followed by slot IDs, padded with 0xFF.
  *
- * @param out_slots Array of 10 bytes to fill.
+ * @return true on a complete snapshot, false on a storage read failure.
  */
-void smart_entry_storage_get_slots_bitmap(
+bool smart_entry_storage_list_slots(
     uint8_t out_slots[SMART_ENTRY_MAX_SLOTS + 1]);
 
 /**

@@ -7,7 +7,13 @@ import {
   setLockSyncRequired,
   type SmartEntryDb,
 } from "@workspace/db"
-import type { AccessEvent, LockSlot, LockStatus } from "@workspace/shared"
+import {
+  LOCK_SLOT_COUNT,
+  slotIdSchema,
+  type AccessEvent,
+  type LockSlot,
+  type LockStatus,
+} from "@workspace/shared"
 
 import {
   LockBusyError,
@@ -18,7 +24,9 @@ import {
 import {
   Command,
   Event,
+  MAX_NAME_BYTES,
   NO_SLOT,
+  TOTP_SECRET_BYTES,
   decodePacket,
   encodePacket,
   type Packet,
@@ -160,27 +168,26 @@ export class ZigbeeLockTransport implements LockTransport {
 
   async listSlots(): Promise<LockSlot[]> {
     const data = await this.request(Command.listSlots, NO_SLOT)
-    const slots: LockSlot[] = []
-    const count = data[2] ?? 0;
-    let offset = 3;
-
-    for (let i = 0; i < count; i++) {
-      const id = data[offset++]!
-      if  (id != 255) {
-        slots.push({id, hasTotp: true, hasRfid: false})
-      }
-    }
-
-    return slots
+    const count = data[1]!
+    return Array.from(data.subarray(2, 2 + count), (id) => ({
+      id,
+      hasTotp: true,
+      hasRfid: false,
+    }))
   }
 
   async setUser(slot: number, secret: Uint8Array, name: string): Promise<void> {
     this.validateSlot(slot)
-    if (secret.length !== 32)
+    if (secret.length !== TOTP_SECRET_BYTES)
       throw new Error("TOTP secret must contain 32 bytes")
 
-    const nameBuf = Buffer.from(name.trim(), "utf-8").subarray(0,20)
-    const data = Buffer.concat([Buffer.from(secret), Buffer.from([nameBuf.length]), nameBuf])
+    const nameBuf = Buffer.alloc(MAX_NAME_BYTES)
+    const nameLength = nameBuf.write(name.trim(), "utf8")
+    const data = Buffer.concat([
+      secret,
+      Buffer.from([nameLength]),
+      nameBuf.subarray(0, nameLength),
+    ])
 
     await this.request(Command.setUser, slot, data)
   }
@@ -195,7 +202,7 @@ export class ZigbeeLockTransport implements LockTransport {
   }
 
   private validateSlot(slot: number): void {
-    if (!Number.isInteger(slot) || slot < 0 || slot > 9)
+    if (!slotIdSchema.safeParse(slot).success)
       throw new Error("Invalid lock slot")
   }
 
@@ -234,15 +241,16 @@ export class ZigbeeLockTransport implements LockTransport {
       }
       const data = packet.data.subarray(1)
       if (packet.opcode === Command.listSlots) {
+        const count = data[1]!
+        const slots = data.subarray(2, 2 + count)
+        const padding = data.subarray(2 + count)
         if (
-          data.length !== 11 ||
+          data.length !== 2 + LOCK_SLOT_COUNT ||
           data[0]! > 1 ||
-          [...data.subarray(1)].some(
-            (bits) =>
-              bits > 7 ||
-              (!(bits & 1) && bits !== 0) ||
-              (bits & 1 && !(bits & 6))
-          )
+          count > LOCK_SLOT_COUNT ||
+          slots.some((id) => id >= LOCK_SLOT_COUNT) ||
+          new Set(slots).size !== count ||
+          padding.some((id) => id !== NO_SLOT)
         )
           return
         this.eventsEnabled = true

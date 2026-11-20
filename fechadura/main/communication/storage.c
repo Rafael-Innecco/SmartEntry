@@ -147,7 +147,7 @@ bool smart_entry_storage_get_slot(uint8_t slot_idx,
 bool smart_entry_storage_set_slot(uint8_t slot_idx,
                                   const uint8_t secret[SMART_ENTRY_APP_KEY_LEN],
                                   const char *name) {
-    if (slot_idx >= SMART_ENTRY_SLOT_UNASSIGNED || !secret) {
+    if (slot_idx >= SMART_ENTRY_MAX_SLOTS || !secret) {
         return false;
     }
 
@@ -191,33 +191,23 @@ bool smart_entry_storage_clear_slot(uint8_t slot_idx) {
     return true;
 }
 
-void smart_entry_storage_get_slots_bitmap(
+bool smart_entry_storage_list_slots(
     uint8_t out_slots[SMART_ENTRY_MAX_SLOTS + 1]) {
-    if (!out_slots) {
-        return;
-    }
-
     memset(out_slots + 1, SMART_ENTRY_SLOT_UNASSIGNED, SMART_ENTRY_MAX_SLOTS);
 
-    UserIterator userIt;
-    esp_err_t ret = initUserIter(&userIt);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Error initializing user iterator: %s",
-                 esp_err_to_name(ret));
-        return;
-    }
-
     uint8_t count = 0;
-    DbUser rec;
-
-    while (nextUser(&userIt) == ESP_OK && count < SMART_ENTRY_MAX_SLOTS) {
-        if (loadUser(userIt.id, &rec) == ESP_OK) {
-            out_slots[count + 1] = userIt.id;
-            count++;
+    for (uint8_t id = 0; id < SMART_ENTRY_MAX_SLOTS; id++) {
+        smart_entry_slot_t slot;
+        if (!smart_entry_storage_get_slot(id, &slot)) {
+            return false;
+        }
+        if (slot.flags & SMART_ENTRY_SLOT_FLAG_OCCUPIED) {
+            out_slots[++count] = id;
         }
     }
 
     out_slots[0] = count;
+    return true;
 }
 
 void smart_entry_storage_cache_response(uint32_t counter,

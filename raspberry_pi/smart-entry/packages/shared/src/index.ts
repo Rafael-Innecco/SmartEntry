@@ -5,8 +5,9 @@ import { z } from "zod"
 
 // Users
 
-/** A lock slot number. The lock has exactly 10 slots, one per user. */
-export const slotIdSchema = z.number().int().min(0).max(255)
+/** Number of user slots managed over Zigbee. */
+export const LOCK_SLOT_COUNT = 10
+export const slotIdSchema = z.number().int().min(0).max(LOCK_SLOT_COUNT - 1)
 
 const userNameSchema = z.string().trim().min(1).max(64)
 
@@ -14,8 +15,7 @@ const userNameSchema = z.string().trim().min(1).max(64)
  * A user slot as replicated on the Raspberry Pi. The lock (fechadura) is the
  * source of truth for credentials, so this shape intentionally omits the TOTP
  * secret and the raw RFID tag value — the replica only needs to know whether
- * each factor has been set up. The name is Pi-owned metadata: the lock never
- * stores it.
+ * each factor has been set up. The Pi keeps the display name across syncs.
  */
 export const userSchema = z.object({
   id: slotIdSchema,

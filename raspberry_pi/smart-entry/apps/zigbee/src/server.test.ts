@@ -214,7 +214,7 @@ describe("POST /sync", () => {
     await register(0, "Alice")
     await register(1, "Bob")
     await lock.clearUser(1)
-    await lock.setUser(3, Buffer.alloc(32))
+    await lock.setUser(3, Buffer.alloc(32), "Ana")
 
     const res = await call("POST", "/sync")
     assert.equal(res.status, 200)

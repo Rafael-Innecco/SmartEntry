@@ -21,9 +21,9 @@ test("overlapping registrations cannot replace the first credential", async () =
   const lock = createFakeLockTransport()
   const confirmation = deferred<void>()
   const setUser = lock.setUser.bind(lock)
-  lock.setUser = async (slot, secret) => {
+  lock.setUser = async (slot, secret, name) => {
     await confirmation.promise
-    await setUser(slot, secret)
+    await setUser(slot, secret, name)
   }
   const services = createServices(db, lock, 1000)
   try {
@@ -47,9 +47,9 @@ test("late registration requires sync and removal before issuing a new QR", asyn
   const lock = createFakeLockTransport()
   const confirmation = deferred<void>()
   const setUser = lock.setUser.bind(lock)
-  lock.setUser = async (slot, secret) => {
+  lock.setUser = async (slot, secret, name) => {
     await confirmation.promise
-    await setUser(slot, secret)
+    await setUser(slot, secret, name)
   }
   const services = createServices(db, lock, 20)
   try {

@@ -177,24 +177,25 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
             break;
         }
 
-        /* Adopt session challenge for subsequent events and reset sequence */
+        if (!smart_entry_storage_list_slots(&rsp_env.data[2])) {
+            rsp_env.data[0] = SMART_ENTRY_RESULT_PERSIST_OR_MECH_FAIL;
+            break;
+        }
         smart_entry_event_adopt_session(req_env.session);
 
-        /* Success response: result 0x00 + 1 byte locked + 10 bytes slot bitmap
-         */
+        /* Success: result, lock state, count, then ten padded slot IDs. */
         rsp_env.data[0] = SMART_ENTRY_RESULT_SUCCESS;
         rsp_env.data[1] = smart_entry_get_lock_state();
-        smart_entry_storage_get_slots_bitmap(&rsp_env.data[2]);
-        rsp_env.data_len = 1 + 1 + 1 + SMART_ENTRY_MAX_SLOTS; /* 12 bytes */
+        rsp_env.data_len = 3 + SMART_ENTRY_MAX_SLOTS;
         ESP_LOGI(TAG, "ANSWERING LIST_SLOTS: %d", rsp_env.data[2]);
         break;
     }
 
     case SMART_ENTRY_OPCODE_SET_USER: {
         ESP_LOGI(TAG, "Received SET_USER OPCODE");
-        /* Opcode 2 setUser: slot 0..9, 32 bytes TOTP secret */
-        if (req_env.slot != SMART_ENTRY_SLOT_UNASSIGNED ||
-            req_env.data_len != SMART_ENTRY_APP_KEY_LEN) {
+        /* Slot 0..9, 32-byte TOTP secret, name length, UTF-8 name. */
+        if (req_env.slot >= SMART_ENTRY_MAX_SLOTS ||
+            req_env.data_len < SMART_ENTRY_APP_KEY_LEN + 1) {
             rsp_env.data[0] = SMART_ENTRY_RESULT_BAD_PAYLOAD;
             break;
         }
@@ -213,8 +214,11 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
         }
 
         smart_entry_slot_t existing_slot;
-        if (smart_entry_storage_get_slot(req_env.slot, &existing_slot) &&
-            (existing_slot.flags & SMART_ENTRY_SLOT_FLAG_OCCUPIED)) {
+        if (!smart_entry_storage_get_slot(req_env.slot, &existing_slot)) {
+            rsp_env.data[0] = SMART_ENTRY_RESULT_PERSIST_OR_MECH_FAIL;
+            break;
+        }
+        if (existing_slot.flags & SMART_ENTRY_SLOT_FLAG_OCCUPIED) {
             /* Slot already occupied */
             rsp_env.data[0] = SMART_ENTRY_RESULT_SLOT_OCCUPIED;
             break;

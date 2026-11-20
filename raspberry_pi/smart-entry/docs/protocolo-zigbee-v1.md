@@ -14,11 +14,11 @@ O cluster privado **`0xFC00`** transporta abertura, usuários, estado e eventos.
 | `0x01 response` | servidor ESP → cliente Pi | Um `OCTET_STR` contendo envelope `kind=1`           |
 | `0x02 event`    | servidor ESP → cliente Pi | Um `OCTET_STR` contendo envelope `kind=2`           |
 
-Frames específicos de cluster, sem campo manufacturer-specific e sem código de fabricante nesta rede privada. Desabilitar default response. O `OCTET_STR` inclui **um byte de comprimento antes do envelope**; esse byte não participa do HMAC. O payload não é texto, JSON ou hexadecimal ASCII. O envelope mais longo tem 69 bytes (73 com cabeçalho ZCL e comprimento), para validação de tamanho/fragmentação na bancada. Número de sequência ZCL não substitui a correlação/autenticação da aplicação.
+Frames específicos de cluster, sem campo manufacturer-specific e sem código de fabricante nesta rede privada. Desabilitar default response. O `OCTET_STR` inclui **um byte de comprimento antes do envelope**; esse byte não participa do HMAC. O payload não é texto, JSON ou hexadecimal ASCII. O envelope mais longo tem 90 bytes (94 com cabeçalho ZCL e comprimento), para validação de tamanho/fragmentação na bancada. Número de sequência ZCL não substitui a correlação/autenticação da aplicação.
 
 ## Envelope binário
 
-Todos os inteiros são unsigned little endian; o IEEE usado no HMAC é a exceção descrita abaixo. Tamanho exato: `37 + N` bytes, com `0 ≤ N ≤ 32`. Sem padding nem bytes adicionais.
+Todos os inteiros são unsigned little endian; o IEEE usado no HMAC é a exceção descrita abaixo. Tamanho exato: `37 + N` bytes, com `0 ≤ N ≤ 53`. O padding de `listSlots` faz parte dos dados contabilizados em `N`.
 
 | Offset | Bytes | Campo                                                      |
 | ------ | ----- | ---------------------------------------------------------- |
@@ -50,12 +50,12 @@ O primeiro byte dos dados de **toda resposta** é um resultado. Em sucesso, os b
 
 | Opcode        | Request                             | Sucesso após o resultado `0x00`                                           |
 | ------------- | ----------------------------------- | ------------------------------------------------------------------------- |
-| `1 listSlots` | Slot FF, deadline 0, sem dados      | 1 byte locked (`0` destravada, `1` travada), seguido de 10 bytes de slots |
-| `2 setUser`   | Slot 0..9, 32 bytes de segredo TOTP | Sem dados; segredo já persistido antes do ACK                             |
+| `1 listSlots` | Slot FF, deadline 0, sem dados | Estado travado (1 byte), contagem (1 byte), IDs dos slots (10 bytes) |
+| `2 setUser`   | Slot 0..9, segredo TOTP (32 bytes), comprimento do nome (1 byte), nome UTF-8 (0 a 20 bytes) | Sem dados; cadastro persistido antes do ACK |
 | `3 clearUser` | Slot 0..9, sem dados                | Sem dados; credenciais do slot já removidas da memória persistente        |
 | `4 unlock`    | Slot FF, sem dados                  | Um byte `0`, confirmando estado destravado após acionar o mecanismo       |
 
-Cada byte de slot tem bit 0 ocupado, bit 1 TOTP, bit 2 RFID; demais bits zero. Slot vazio é `0`. Ocupado precisa ter pelo menos um fator: `3` TOTP, `5` RFID, `7` ambos. Não retornar nomes nem segredos em listSlots. `setUser` recusa slots ocupados. RFID não tem comando de cadastro nesta revisão.
+O estado é `0` para destravada e `1` para travada. Em `listSlots`, os primeiros IDs até a contagem são distintos e vão de `0` a `9`. As posições restantes são preenchidas com `0xFF`. A lista informa apenas slots com TOTP e omite nomes e segredos. `setUser` recusa slots ocupados.
 
 | Resultado | Significado                        |
 | --------- | ---------------------------------- |
