@@ -60,6 +60,7 @@ esp_err_t initDb(void) {
         dummy.id = id;
         memcpy(&dummy.name, name, strlen(name)+1);
         memcpy(&dummy.key, &key, sizeof(key));
+        ESP_ERROR_CHECK(storeUser(id, &dummy));
     }
 
     // TEST USER 2:

@@ -3,6 +3,7 @@
 #include <time.h>
 
 #include "esp_log.h"
+#include "ezbee/zcl/cluster/metering_desc.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -22,18 +23,22 @@ int checkCode(uint8_t *c) {
     DbUser user;
 
     while (nextUser(&iter) == ESP_OK) {
-        ESP_ERROR_CHECK(loadUser(iter.id, &user));
-        compute_totp(user.key, now, code);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            uint64_t ref = now - 30 + attempt*30;
 
-        bool matches = true;
-        for (int i = 0; i < TOTP_CODELEN; i++) {
-            if (c[i] != code[i]) {
-                matches = false;
+            ESP_ERROR_CHECK(loadUser(iter.id, &user));
+            compute_totp(user.key, ref, code);
+
+            bool matches = true;
+            for (int i = 0; i < TOTP_CODELEN; i++) {
+                if (c[i] != code[i]) {
+                    matches = false;
+                }
             }
-        }
 
-        if (matches)
-            return 1;
+            if (matches)
+                return 1;
+        }
     }
 
     return 0;
@@ -51,6 +56,8 @@ void vDebugCodeTask(void *) {
 
         UserIterator iter;
         initUserIter(&iter);
+
+        ESP_LOGW(TAG, "Current time: %llu", now);
 
         while (nextUser(&iter) == ESP_OK) {
             ESP_ERROR_CHECK(loadUser(iter.id, &user));
