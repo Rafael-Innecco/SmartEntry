@@ -96,8 +96,7 @@ void app_main(void) {
 
     int ticks;
     // wait for ~20 seconds
-    // for (ticks = 0; ticks < 200; ticks++) {
-    for(;;) {
+    for (ticks = 0; ticks < 200; ticks++) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
 
         char c;

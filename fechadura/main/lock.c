@@ -2,6 +2,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "communication/event_manager.h"
 #include "driver/mcpwm_prelude.h"
 
 #include "gpio.h"
@@ -103,6 +104,7 @@ void openDoor() {
         ESP_LOGE(TAG, "failed to release lock semaph (open)");
     }
     ESP_LOGI(TAG, "opened");
+    smart_entry_send_status_event(0);
 }
 
 void closeDoor() {
@@ -112,4 +114,5 @@ void closeDoor() {
         ESP_LOGE(TAG, "failed to release lock semaph (close)");
     }
     ESP_LOGI(TAG, "closed");
+    smart_entry_send_status_event(1);
 }
