@@ -1,7 +1,7 @@
-#include <stdio.h>
 #include "esp_log.h"
-#include "nvs_flash.h"
 #include "nvs.h"
+#include "nvs_flash.h"
+#include <stdio.h>
 #include <stdlib.h>
 
 #include "db.h"
@@ -28,13 +28,15 @@ esp_err_t initDb(void) {
 
     err = nvs_open(USERS_NAMESPACE, NVS_READWRITE, &users_db_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open namespace %s: %s", USERS_NAMESPACE, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to open namespace %s: %s", USERS_NAMESPACE,
+                 esp_err_to_name(err));
         return err;
     }
 
     err = nvs_open(MSGCOUNTER_NAMESPACE, NVS_READWRITE, &msgcounter_db_handle);
     if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to open namespace %s: %s", MSGCOUNTER_NAMESPACE, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to open namespace %s: %s", MSGCOUNTER_NAMESPACE,
+                 esp_err_to_name(err));
         return err;
     }
 
@@ -44,13 +46,14 @@ esp_err_t initDb(void) {
         ESP_LOGI(TAG, "initializing msg counter");
         nvs_set_u64(msgcounter_db_handle, MSGCOUNTER_KEY, 0);
     } else if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to read msgcounter %s: %s", MSGCOUNTER_NAMESPACE, esp_err_to_name(err));
+        ESP_LOGE(TAG, "Failed to read msgcounter %s: %s", MSGCOUNTER_NAMESPACE,
+                 esp_err_to_name(err));
         return err;
     }
 
     // TEST USER 1:
     {
-        char* name = "Norbit";
+        char *name = "Norbit";
         uint8_t key[32] = {
             123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
             123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
@@ -58,22 +61,22 @@ esp_err_t initDb(void) {
         uint8_t id = 69;
         DbUser dummy;
         dummy.id = id;
-        memcpy(&dummy.name, name, strlen(name)+1);
+        memcpy(&dummy.name, name, strlen(name) + 1);
         memcpy(&dummy.key, &key, sizeof(key));
         ESP_ERROR_CHECK(storeUser(id, &dummy));
     }
 
     // TEST USER 2:
     {
-        char* name2 = "Axel Foley";
+        char *name2 = "Axel Foley";
         uint8_t key2[32] = {
-            123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67, 123, 42, 69, 67,
+            123, 42, 69, 67, 123, 42, 69, 67, 123, 42,  69, 67, 123, 42, 69, 67,
             123, 42, 69, 67, 123, 69, 69, 67, 123, 222, 69, 67, 123, 42, 69, 67,
         };
         uint8_t id2 = 70;
         DbUser dummy2;
         dummy2.id = id2;
-        memcpy(&dummy2.name, name2, strlen(name2)+1);
+        memcpy(&dummy2.name, name2, strlen(name2) + 1);
         memcpy(&dummy2.key, &key2, sizeof(key2));
         ESP_ERROR_CHECK(storeUser(id2, &dummy2));
     }
@@ -115,20 +118,20 @@ esp_err_t loadUser(uint8_t id, DbUser *record) {
         return err;
     }
     if (length != sizeof(*record)) {
-        ESP_LOGE(TAG, "User %u has unexpected size %u", id, (unsigned) length);
+        ESP_LOGE(TAG, "User %u has unexpected size %u", id, (unsigned)length);
         return ESP_ERR_INVALID_SIZE;
     }
     record->id = id;
     return ESP_OK;
 }
 
-esp_err_t initUserIter(UserIterator* iter) {
+esp_err_t initUserIter(UserIterator *iter) {
     iter->id = 0;
     iter->next_id = 0;
     return ESP_OK;
 }
 
-esp_err_t nextUser(UserIterator* iter) {
+esp_err_t nextUser(UserIterator *iter) {
     char key[NVS_KEY_NAME_MAX_SIZE];
 
     for (; iter->next_id <= UINT8_MAX; iter->next_id++) {
@@ -149,7 +152,7 @@ esp_err_t msgCounterNext(uint64_t *count) {
     esp_err_t err = nvs_get_u64(msgcounter_db_handle, MSGCOUNTER_KEY, count);
     ESP_ERROR_CHECK(err);
 
-    err = nvs_set_u64(msgcounter_db_handle, MSGCOUNTER_KEY, *count+1);
+    err = nvs_set_u64(msgcounter_db_handle, MSGCOUNTER_KEY, *count + 1);
     ESP_ERROR_CHECK(err);
     return err;
 }

@@ -110,7 +110,7 @@ export function createServices(
         if (getUser(db, id))
           throw new ConflictError(`slot ${id} is already in use`)
         const secret = generateTotpSecret()
-        await lock.setUser(id, secret)
+        await lock.setUser(id, secret, name)
         const confirmedAt = now()
         const user: User = {
           id,

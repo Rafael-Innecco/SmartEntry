@@ -24,7 +24,7 @@ int checkCode(uint8_t *c) {
 
     while (nextUser(&iter) == ESP_OK) {
         for (int attempt = 0; attempt < 3; attempt++) {
-            uint64_t ref = now - 30 + attempt*30;
+            uint64_t ref = now - 30 + attempt * 30;
 
             ESP_ERROR_CHECK(loadUser(iter.id, &user));
             compute_totp(user.key, ref, code);

@@ -1,9 +1,9 @@
 #ifndef SMART_ENTRY_LOCK_CONTROLLER_H
 #define SMART_ENTRY_LOCK_CONTROLLER_H
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "protocol.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,6 +20,8 @@ void smart_entry_lock_init(void);
  * @return 0 for unlocked, 1 for locked.
  */
 uint8_t smart_entry_get_lock_state(void);
+
+void smart_entry_set_lock_state(uint8_t locked); 
 
 /**
  * @brief Perform remote unlock operation (from Opcode 4 unlock).
@@ -40,7 +42,8 @@ bool smart_entry_perform_unlock(void);
  * @param code_digits Array of 6 uint8_t digits (each 0..9).
  * @return true if access granted, false if rejected.
  */
-bool smart_entry_check_keypad_code(uint8_t slot_idx, const uint8_t code_digits[6]);
+bool smart_entry_check_keypad_code(uint8_t slot_idx,
+                                   const uint8_t code_digits[6]);
 
 #ifdef __cplusplus
 }

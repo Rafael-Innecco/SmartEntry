@@ -1,10 +1,10 @@
 #include "keyboard.h"
+#include "driver/gpio.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
 #include "freertos/task.h"
 #include "gpio.h"
 #include "portmacro.h"
-#include "driver/gpio.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -19,7 +19,7 @@ const char KBD_ARR[] = {'1', '4', '7', '*', '2', '5', '8', '0',
 
 QueueHandle_t xKeyboardQueue;
 
-int readKeyboardQueue(char* c) {
+int readKeyboardQueue(char *c) {
     char lKeyboardReceived;
     BaseType_t xKeyboardQueueStatus;
     const TickType_t xTicksToWait = pdMS_TO_TICKS(100);

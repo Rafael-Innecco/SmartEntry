@@ -1,16 +1,17 @@
 #ifndef SMART_ENTRY_TIME_SYNC_H
 #define SMART_ENTRY_TIME_SYNC_H
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <time.h>
 #include "protocol.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <time.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define ZCL_EPOCH_TO_UNIX_OFFSET 946684800ULL /* Seconds between 1970-01-01 and 2000-01-01 */
+#define ZCL_EPOCH_TO_UNIX_OFFSET                                               \
+    946684800ULL /* Seconds between 1970-01-01 and 2000-01-01 */
 
 /**
  * @brief Initialize time sync subsystem.
@@ -20,7 +21,8 @@ void smart_entry_time_init(void);
 /**
  * @brief Check if the current system clock is synchronized and reliable.
  *
- * @return true if clock was synchronized with coordinator (timeStatus == 3) and valid.
+ * @return true if clock was synchronized with coordinator (timeStatus == 3) and
+ * valid.
  */
 bool smart_entry_is_clock_reliable(void);
 
@@ -41,10 +43,10 @@ uint32_t smart_entry_get_unix_time(void);
 bool smart_entry_apply_zcl_time(uint32_t zcl_time, uint8_t time_status);
 
 /**
- * @brief Invalidate clock reliability (e.g., after communication loss or reboot).
+ * @brief Invalidate clock reliability (e.g., after communication loss or
+ * reboot).
  */
 void smart_entry_invalidate_clock(void);
-
 
 /**
  * @brief Send ZCL Read Attributes request for cluster 0x000A to coordinator.

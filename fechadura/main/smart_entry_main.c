@@ -6,6 +6,7 @@
 
 #include "esp_chip_info.h"
 #include "esp_flash.h"
+#include "esp_log.h"
 #include "esp_system.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/idf_additions.h"
@@ -14,19 +15,18 @@
 #include "nvs_flash.h"
 #include "portmacro.h"
 #include "sdkconfig.h"
-#include "esp_log.h"
 
 #include <inttypes.h>
 #include <stdio.h>
 #include <string.h>
 
+#include "communication/communication.h"
+#include "db.h"
 #include "keyboard.h"
 #include "lock.h"
 #include "password.h"
-#include "db.h"
-#include "totp/totp.h"
-#include "communication/communication.h"
 #include "sleep.h"
+#include "totp/totp.h"
 
 #define TAG "main"
 
@@ -89,14 +89,16 @@ void app_main(void) {
     BaseType_t xCommReturned;
     xCommReturned = xTaskCreate(vCommTask, "Comm", 4096, NULL, 5, NULL);
 
-    xCommReturned = xTaskCreate(vDebugCodeTask, "debugcode", 4096, NULL, 5, NULL);
+    xCommReturned =
+        xTaskCreate(vDebugCodeTask, "debugcode", 4096, NULL, 5, NULL);
 
     uint8_t pass[TOTP_CODELEN];
     int i = 0;
 
     int ticks;
     // wait for ~20 seconds
-    for (ticks = 0; ticks < 200; ticks++) {
+    // for (ticks = 0; ticks < 200; ticks++) {
+    for (;;) {
         vTaskDelay(100 / portTICK_PERIOD_MS);
 
         char c;
@@ -120,7 +122,7 @@ void app_main(void) {
         }
     }
 
-    go_to_sleep(); 
+    go_to_sleep();
 
     ESP_LOGI(TAG, "How did you get here? Restarting now.\n");
     fflush(stdout);

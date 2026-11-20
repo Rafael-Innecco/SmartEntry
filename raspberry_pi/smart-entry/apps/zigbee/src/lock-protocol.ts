@@ -55,7 +55,7 @@ export function encodePacket(
 ): Buffer {
   if (
     packet.session.length !== 8 ||
-    packet.data.length > 32 ||
+    packet.data.length > 64 ||
     !Number.isInteger(packet.counter) ||
     packet.counter < 1 ||
     packet.counter > 0xffffffff ||
@@ -89,7 +89,7 @@ export function encodePacket(
 export function decodePacket(wire: Buffer, key: Buffer, ieee: string): Packet {
   if (
     wire.length < HEADER + TAG ||
-    wire.length > HEADER + 32 + TAG ||
+    wire.length > HEADER + 64 + TAG ||
     wire[0] !== 1 ||
     wire.length !== HEADER + wire[20]! + TAG
   ) {

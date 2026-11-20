@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include <stdint.h>
 #include "esp_err.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,7 +42,8 @@ typedef void (*alarm_timer_callback_t)(alarm_timer_arg_t arg);
  *
  * @return ESP_OK on success, error code otherwise.
  */
-esp_err_t alarm_timer_schedule(alarm_timer_callback_t cb, alarm_timer_arg_t arg, uint32_t time_ms);
+esp_err_t alarm_timer_schedule(alarm_timer_callback_t cb, alarm_timer_arg_t arg,
+                               uint32_t time_ms);
 
 #ifdef __cplusplus
 }

@@ -1,10 +1,10 @@
 #include "lock_controller.h"
+#include "../lock.h"
+#include "../totp/totp.h"
 #include "esp_log.h"
 #include "event_manager.h"
 #include "storage.h"
 #include "time_sync.h"
-#include "../totp/totp.h"
-#include "../lock.h"
 #include <string.h>
 
 static const char *TAG = "SE_LOCK_CTRL";
@@ -16,6 +16,8 @@ void smart_entry_lock_init(void) {
 }
 
 uint8_t smart_entry_get_lock_state(void) { return s_lock_state; }
+
+void smart_entry_set_lock_state(uint8_t locked) { s_lock_state = locked; }
 
 bool smart_entry_perform_unlock(void) {
     ESP_LOGI(TAG, "Actuating physical unlock mechanism...");

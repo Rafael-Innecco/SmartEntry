@@ -6,6 +6,7 @@
 #include "protocol.h"
 #include "storage.h"
 #include "time_sync.h"
+#include <stdint.h>
 #include <string.h>
 
 static const char *TAG = "SE_SERVER";
@@ -184,17 +185,31 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
         rsp_env.data[0] = SMART_ENTRY_RESULT_SUCCESS;
         rsp_env.data[1] = smart_entry_get_lock_state();
         smart_entry_storage_get_slots_bitmap(&rsp_env.data[2]);
-        rsp_env.data_len = 1 + 1 + SMART_ENTRY_MAX_SLOTS; /* 12 bytes */
+        rsp_env.data_len = 1 + 1 + 1 + SMART_ENTRY_MAX_SLOTS; /* 12 bytes */
+        ESP_LOGI(TAG, "ANSWERING LIST_SLOTS: %d", rsp_env.data[2]);
         break;
     }
 
     case SMART_ENTRY_OPCODE_SET_USER: {
         ESP_LOGI(TAG, "Received SET_USER OPCODE");
         /* Opcode 2 setUser: slot 0..9, 32 bytes TOTP secret */
-        if (req_env.slot >= SMART_ENTRY_MAX_SLOTS ||
+        if (req_env.slot != SMART_ENTRY_SLOT_UNASSIGNED ||
             req_env.data_len != SMART_ENTRY_APP_KEY_LEN) {
             rsp_env.data[0] = SMART_ENTRY_RESULT_BAD_PAYLOAD;
             break;
+        }
+
+        uint8_t name_len = req_env.data[SMART_ENTRY_APP_KEY_LEN];
+        if (name_len > SMART_ENTRY_MAX_NAME_LEN ||
+            req_env.data_len != (SMART_ENTRY_APP_KEY_LEN + 1 + name_len)) {
+            rsp_env.data[0] = SMART_ENTRY_RESULT_BAD_PAYLOAD;
+            break;
+        }
+
+        char name[SMART_ENTRY_MAX_NAME_LEN + 1] = {0};
+        if (name_len > 0) {
+            memcpy(name, &req_env.data[SMART_ENTRY_APP_KEY_LEN + 1], name_len);
+            name[name_len] = '\0';
         }
 
         smart_entry_slot_t existing_slot;
@@ -205,7 +220,7 @@ handle_smart_entry_request(const ezb_zcl_cmd_hdr_t *header,
             break;
         }
 
-        if (!smart_entry_storage_set_slot(req_env.slot, req_env.data)) {
+        if (!smart_entry_storage_set_slot(req_env.slot, req_env.data, name)) {
             rsp_env.data[0] = SMART_ENTRY_RESULT_PERSIST_OR_MECH_FAIL;
             break;
         }

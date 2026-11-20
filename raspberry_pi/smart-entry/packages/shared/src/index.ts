@@ -6,7 +6,7 @@ import { z } from "zod"
 // Users
 
 /** A lock slot number. The lock has exactly 10 slots, one per user. */
-export const slotIdSchema = z.number().int().min(0).max(9)
+export const slotIdSchema = z.number().int().min(0).max(255)
 
 const userNameSchema = z.string().trim().min(1).max(64)
 

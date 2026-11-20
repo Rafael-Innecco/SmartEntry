@@ -100,7 +100,7 @@ size_t build_otpauth_url(const void *key, const char *issuer,
 
 //// usage example:
 //
-//int main(int argc, char **argv) {
+// int main(int argc, char **argv) {
 //    const totp mytotp = {
 //        .key = key,
 //        .keylen = KEYLEN,

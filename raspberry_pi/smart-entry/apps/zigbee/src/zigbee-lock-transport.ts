@@ -161,19 +161,28 @@ export class ZigbeeLockTransport implements LockTransport {
   async listSlots(): Promise<LockSlot[]> {
     const data = await this.request(Command.listSlots, NO_SLOT)
     const slots: LockSlot[] = []
-    for (let id = 0; id < 10; id++) {
-      const bits = data[id + 1]!
-      if (bits & 1)
-        slots.push({ id, hasTotp: !!(bits & 2), hasRfid: !!(bits & 4) })
+    const count = data[2] ?? 0;
+    let offset = 3;
+
+    for (let i = 0; i < count; i++) {
+      const id = data[offset++]!
+      if  (id != 255) {
+        slots.push({id, hasTotp: true, hasRfid: false})
+      }
     }
+
     return slots
   }
 
-  async setUser(slot: number, secret: Uint8Array): Promise<void> {
+  async setUser(slot: number, secret: Uint8Array, name: string): Promise<void> {
     this.validateSlot(slot)
     if (secret.length !== 32)
       throw new Error("TOTP secret must contain 32 bytes")
-    await this.request(Command.setUser, slot, Buffer.from(secret))
+
+    const nameBuf = Buffer.from(name.trim(), "utf-8").subarray(0,20)
+    const data = Buffer.concat([Buffer.from(secret), Buffer.from([nameBuf.length]), nameBuf])
+
+    await this.request(Command.setUser, slot, data)
   }
 
   async clearUser(slot: number): Promise<void> {

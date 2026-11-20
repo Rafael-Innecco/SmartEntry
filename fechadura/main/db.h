@@ -3,9 +3,9 @@
 
 #define MAX_USERNAME_LEN 64
 
-#include <stdint.h>
 #include "esp_err.h"
 #include "totp/totp.h"
+#include <stdint.h>
 
 typedef struct {
     uint8_t id;
@@ -24,8 +24,8 @@ esp_err_t storeUser(uint8_t id, DbUser *record);
 esp_err_t eraseUser(uint8_t id);
 esp_err_t loadUser(uint8_t id, DbUser *record);
 
-esp_err_t initUserIter(UserIterator* iter);
-esp_err_t nextUser(UserIterator* iter);
+esp_err_t initUserIter(UserIterator *iter);
+esp_err_t nextUser(UserIterator *iter);
 
 esp_err_t msgCounterNext(uint64_t *count);
 

@@ -16,7 +16,7 @@ export interface LockTransport {
   /** Occupied slots only, with the credentials the lock has for each. */
   listSlots(): Promise<LockSlot[]>
   /** Stores a TOTP secret in a slot; resolves once the lock confirms. */
-  setUser(slot: number, totpSecret: Uint8Array): Promise<void>
+  setUser(slot: number, totpSecret: Uint8Array, name: string): Promise<void>
   /** Clears a slot; resolves once the lock confirms. */
   clearUser(slot: number): Promise<void>
   /** Resolves once the lock confirms it opened. */

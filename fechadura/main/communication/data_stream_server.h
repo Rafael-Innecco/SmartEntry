@@ -1,9 +1,9 @@
 #ifndef DATA_STREAM_SERVER_H
 #define DATA_STREAM_SERVER_H
 
-#include <stdint.h>
 #include "esp_zigbee.h"
 #include "protocol.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

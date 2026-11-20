@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-int checkCode(uint8_t* c);
-void vDebugCodeTask(void*);
+int checkCode(uint8_t *c);
+void vDebugCodeTask(void *);
 
 #endif

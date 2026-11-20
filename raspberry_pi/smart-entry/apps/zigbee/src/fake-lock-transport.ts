@@ -44,7 +44,7 @@ export function createFakeLockTransport(
       return [...slots.values()].sort((a, b) => a.id - b.id)
     },
 
-    async setUser(slot) {
+    async setUser(slot: number, secret: Uint8Array, name: string) {
       await roundTrip()
       slots.set(slot, { id: slot, hasTotp: true, hasRfid: false })
     },
